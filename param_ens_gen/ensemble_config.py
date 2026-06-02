@@ -77,7 +77,6 @@ class LatinHypercubeConfig(EnsembleConfig):
     prebuilt: Optional[np.ndarray] = None
 
 
-
 @dataclass
 class OneAtATimeConfig(EnsembleConfig):
     """Configuration for a One-At-A-Time (OAT) sensitivity ensemble."""

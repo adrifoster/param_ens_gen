@@ -1,6 +1,5 @@
 """Tests for param_ens_gen.param_spec: ParamSpec and its parsing helpers."""
 
-
 import pytest
 
 from param_ens_gen.param_spec import ParamSpec
@@ -73,7 +72,7 @@ def test_from_row_metadata_fields(default_row):
 
 def test_from_row_missing_coord_raises(default_row):
     """from_row raises ValueError when the coord cell is NaN (blank in spreadsheet).
- 
+
     NaN coord is a data error — the spreadsheet author forgot to fill it in.
     An explicit '[]' should be used for scalar parameters instead.
     """
@@ -81,24 +80,27 @@ def test_from_row_missing_coord_raises(default_row):
     row["coord"] = float("nan")
     with pytest.raises(ValueError, match="coord cell is missing"):
         ParamSpec.from_row(row)
-    
+
+
 def test_from_row_explicit_empty_coord_is_scalar(default_row):
     """from_row produces an empty dims list when coord is explicitly '[]'."""
     row = default_row.copy()
     row["coord"] = "[]"
     spec = ParamSpec.from_row(row)
     assert spec.dims == []
-    
+
+
 def test_from_row_base_params_parsed_from_list_literal(joint_param_row):
     """from_row parses a Python list literal in the base_params cell."""
     spec = ParamSpec.from_row(joint_param_row)
     assert len(spec.base_params) == 2
-    
+
+
 def test_from_row_base_params_parsed_from_plain_string(scale_from_root_row):
     """from_row parses a plain (non-bracketed) string in the base_params cell."""
     spec = ParamSpec.from_row(scale_from_root_row)
     assert spec.base_params == ["fates_nonhydro_smpsc"]
- 
+
 
 # ===========================================================================
 # ParamSpec.__post_init__: field-level invariants
@@ -109,17 +111,18 @@ def test_from_row_base_params_parsed_from_plain_string(scale_from_root_row):
 # required fields (e.g. SlicedParameter checks that slice_dim IS present).
 # ===========================================================================
 
+
 def test_slice_dim_on_non_sliced_raises(default_row):
     """ValueError is raised when slice_dim is set on a non-sliced param."""
     row = default_row.copy()
     row["slice_dim"] = "fates_leafage_class"
     with pytest.raises(ValueError, match="slice_dim set but param_type"):
         ParamSpec.from_row(row)
- 
- 
+
+
 def test_slice_index_on_non_sliced_raises(default_row):
     """ValueError is raised when slice_index is set on a non-sliced param.
- 
+
     Uses "0" (string) because the default_row Series is string-typed,
     matching how pandas reads numeric cells from Excel.
     """
@@ -127,8 +130,8 @@ def test_slice_index_on_non_sliced_raises(default_row):
     row["slice_index"] = "0"
     with pytest.raises(ValueError, match="slice_index set but param_type"):
         ParamSpec.from_row(row)
- 
- 
+
+
 def test_root_param_on_non_scale_raises(default_row):
     """ValueError is raised when root_param is set on a non-scale_from_root param."""
     row = default_row.copy()

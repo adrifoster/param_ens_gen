@@ -50,7 +50,9 @@ class DistributionStat(ABC):
     """
 
     @staticmethod
-    def parse(row: pd.Series, stat_type: str, pft_sheet: pd.DataFrame | None=None) -> DistributionStat:
+    def parse(
+        row: pd.Series, stat_type: str, pft_sheet: pd.DataFrame | None = None
+    ) -> DistributionStat:
         """Factory method for DistributionStat
 
         Accepted formats:
@@ -74,20 +76,18 @@ class DistributionStat(ABC):
         Returns:
             DistributionStat: A FixedStat, PFTStat, or PercentStat.
         """
-        
-        # get raw value from cell and make sure it exists
-        raw = str(row.get(f"param_{stat_type}")).strip().lower()
-        if raw is None or (
-            isinstance(raw, float) and pd.isna(raw)
-        ):
-            raise ValueError(
-                f"Parameter '{row.get('parameter_name')}': param_{stat_type} is empty."
-            )
-        
         if stat_type not in ACCEPTED_STATS:
             raise ValueError(
                 f"Unknown stat_type '{stat_type}'. " f"Valid stats: {ACCEPTED_STATS}"
             )
+
+        # get raw value from cell and make sure it exists
+        raw_val = row.get(f"param_{stat_type}")
+        if raw_val is None or (isinstance(raw_val, float) and pd.isna(raw_val)):
+            raise ValueError(
+                f"Parameter '{row.get('parameter_name')}': param_{stat_type} is empty."
+            )
+        raw = str(raw_val).strip().lower()
 
         # convert to string
         as_str = str(raw).strip().lower()
@@ -102,7 +102,7 @@ class DistributionStat(ABC):
 
         # we accept "50%" or "50percent"
         normalised = as_str.replace(" ", "").replace("%", "percent")
-        
+
         # PercentStat
         if "percent" in normalised:
 
@@ -143,7 +143,7 @@ class DistributionStat(ABC):
                 "Expected a number, a percent (e.g. '50percent' or '50%'), "
                 "or 'pft'."
             ) from exc
-        
+
     @abstractmethod
     def resolve(
         self, default_value: float | np.ndarray | None = None
@@ -183,9 +183,9 @@ class PercentStat(DistributionStat):
     e.g. "50percent" for min = default_value - abs(default_value * 0.50)
          "50percent" for max = default_value + abs(default_value * 0.50)
          "50percent" for sd = abs(default_value + abs(default_value * 0.50))
-    
+
     We do not currently allow PercentStat to be used with "mean"
-        
+
     """
 
     percent: float
@@ -254,8 +254,8 @@ class PFTStat(DistributionStat):
                 f"PFT sheet is missing a 'pft_index' column. "
                 f"Found columns: {list(sheet.columns)}"
             )
-        sheet = sheet.sort_values(by='pft_index', ascending=True)
-        
+        sheet = sheet.sort_values(by="pft_index", ascending=True)
+
         row = sheet.get(col)
         if row is None:
             raise ValueError(

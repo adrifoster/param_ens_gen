@@ -1,42 +1,44 @@
 from __future__ import annotations
- 
+
 import copy
 from typing import Optional
 import xarray as xr
- 
+
 from .parameter import Parameter, DimIndex
 
+
 def expand(
-        params: list[Parameter],
-        default_ds: xr.Dataset,
-        fixed_indices: Optional[dict[str, list[int]]] = None,
-    ) -> list[Parameter]:
-        """Expand list of Parameter objects into one Parameter per active index.
+    params: list[Parameter],
+    default_ds: xr.Dataset,
+    fixed_indices: Optional[dict[str, list[int]]] = None,
+) -> list[Parameter]:
+    """Expand list of Parameter objects into one Parameter per active index.
 
-        Args:
-            fixed_indices (Optional[dict[str, list[int]]], optional): Mapping of dimension
-                name to 0-based indices to hold at default. These are never expanded into
-                specs. If None, no indices are fixed and all are expanded over.
+    Args:
+        fixed_indices (Optional[dict[str, list[int]]], optional): Mapping of dimension
+            name to 0-based indices to hold at default. These are never expanded into
+            specs. If None, no indices are fixed and all are expanded over.
 
-        Returns:
-            list[Parameter]: Expanded Parameter list. Unexpanded Parameters are returned
-            unchanged. Expanded Parameters are shallow copies with active_index set to a
-            DimIndex.
+    Returns:
+        list[Parameter]: Expanded Parameter list. Unexpanded Parameters are returned
+        unchanged. Expanded Parameters are shallow copies with active_index set to a
+        DimIndex.
 
-        Raises:
-            ValueError
-                If fixed_indices references unknown dimensions or out-of-range indices.
-            ValueError
-                If a spec with expand_by_index=True has no free_dims.
-        """
-        fixed = fixed_indices or {}
-        full_index_map = _build_full_index_map(default_ds)
-        _validate_fixed(fixed, full_index_map)
+    Raises:
+        ValueError
+            If fixed_indices references unknown dimensions or out-of-range indices.
+        ValueError
+            If a spec with expand_by_index=True has no free_dims.
+    """
+    fixed = fixed_indices or {}
+    full_index_map = _build_full_index_map(default_ds)
+    _validate_fixed(fixed, full_index_map)
 
-        result = []
-        for param in params:
-            result.extend(expand_param(param, fixed, full_index_map))
-        return result
+    result = []
+    for param in params:
+        result.extend(expand_param(param, fixed, full_index_map))
+    return result
+
 
 def expand_param(
     param: Parameter,
@@ -86,6 +88,7 @@ def expand_param(
 
     return expanded
 
+
 def _validate_fixed(
     fixed: dict[str, list[int]],
     full_index_map: dict[str, list[int]],
@@ -113,6 +116,7 @@ def _validate_fixed(
                 f"fixed_indices['{dim}'] contains out-of-range indices {invalid}. "
                 f"Valid range for '{dim}' is 0–{len(valid) - 1}."
             )
+
 
 def _build_full_index_map(default_ds: xr.Dataset) -> dict[str, list[int]]:
     """Build a map of all dimension names to all valid 0-based indices.

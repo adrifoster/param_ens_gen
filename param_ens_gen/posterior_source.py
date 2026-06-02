@@ -23,7 +23,6 @@ from typing import Optional
 import numpy as np
 import pandas as pd
 
-
 _DEFAULT_SORT_INDEX = 0
 
 
@@ -56,7 +55,7 @@ class PosteriorSource:
         """Validate attributes and set path to be an actual Path
 
         Raises:
-            ValueError: 
+            ValueError:
                 array_indices is a string that is not "all"
                 array indices cannot be converted to an int list
         """
@@ -117,7 +116,7 @@ class PosteriorSource:
         """Return one row using normalized_value as a quantile index.
 
         Args:
-            normalized_value (float): Value in [0, 1]. Maps to a row position in the 
+            normalized_value (float): Value in [0, 1]. Maps to a row position in the
             sorted pre-drawn data frame
 
         Raises:
@@ -128,12 +127,12 @@ class PosteriorSource:
             pd.Series: One row of posterior draws, indexed by variable name.
         """
         if normalized_value > 1.0:
-            raise ValueError (
+            raise ValueError(
                 f"normalized_value={normalized_value}. "
                 "Cannot use a normalized_value greater than 1.0"
             )
         if normalized_value < 0.0:
-            raise ValueError (
+            raise ValueError(
                 f"normalized_value={normalized_value}. "
                 "Cannot use a normalized_value less than 0.0"
             )
@@ -141,12 +140,11 @@ class PosteriorSource:
             self._load()
         n = len(self._draws)
         if n == 0:
-            raise RuntimeError (
+            raise RuntimeError(
                 f"PosteriorSource '{self.path}' is empty  - cannot sample."
             )
         idx = min(int(normalized_value * n), n - 1)
         return self._draws.iloc[idx]
-
 
     def unscale(self, value: float) -> float:
         """Find the quantile corresponding to a drawn value.
@@ -165,26 +163,26 @@ class PosteriorSource:
             self._load()
         n = len(self._draws)
         if n == 0:
-            raise RuntimeError (
+            raise RuntimeError(
                 f"PosteriorSource '{self.path}' is empty  - cannot sample."
             )
         if n == 1:
             return 1.0
-        
+
         sort_col = self.parameters[self.sort_param_index]
         max_val = self._draws[sort_col].iloc[-1]
         min_val = self._draws[sort_col].iloc[0]
         if value > max_val:
-            raise ValueError (
+            raise ValueError(
                 f"value: {value} > maximum value on dataset. "
                 f"maximum value is {max_val}"
             )
         if value < min_val:
-            raise ValueError (
+            raise ValueError(
                 f"value: {value} < minimum value on dataset. "
                 f"minimum value is {min_val}"
             )
-        
+
         col = self._draws[sort_col].values
         idx = np.searchsorted(col, value)  # col is already sorted
         idx = np.clip(idx, 0, len(col) - 1)

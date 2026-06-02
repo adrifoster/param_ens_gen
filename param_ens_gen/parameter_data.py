@@ -1,2 +1,1 @@
 """Parameter Data Class"""
-

@@ -16,7 +16,6 @@ from param_ens_gen.distribution_stat import (
     PFTStat,
 )
 
-
 # ===========================================================================
 # Sampler.from_row_and_sheet: factory
 # ===========================================================================
@@ -252,13 +251,13 @@ def test_sample_at_half_percent_returns_default(percent_row):
     assert sampler.sample(
         0.5, SampleContext(default_value=default_val)
     ) == pytest.approx(default_val)
-    
+
+
 def test_sample_half_array_returns_array(percent_row):
-    """sample(0.5) returns midpoint between min and bounds for percent bounds, and 
+    """sample(0.5) returns midpoint between min and bounds for percent bounds, and
     is still an array"""
     sampler = UniformSampler(percent_row)
-    default_val = np.array([[50.0, 60.0, 70.0],
-                            [40.0, 50.0, 60.0]])
+    default_val = np.array([[50.0, 60.0, 70.0], [40.0, 50.0, 60.0]])
     assert sampler.sample(
         0.5, SampleContext(default_value=default_val)
     ) == pytest.approx(default_val)
@@ -268,17 +267,20 @@ def test_sample_half_array_returns_array(percent_row):
 # UniformSampler.normalize
 # ===========================================================================
 
+
 def test_normalize_below_min_raises(default_row):
     """normalize() raises ValueErrro for below minimum bound."""
     sampler = UniformSampler(default_row)
     with pytest.raises(ValueError, match="minimum"):
         sampler.normalize(0.0, SampleContext())
-        
+
+
 def test_normalize_above_max_raises(default_row):
     """normalize() raises ValueErrro for above maximum bound."""
     sampler = UniformSampler(default_row)
     with pytest.raises(ValueError, match="maximum"):
         sampler.normalize(1.0, SampleContext())
+
 
 def test_normalize_is_inverse_of_sample(default_row):
     """normalize(sample(v)) == v for any v in [0, 1]."""
@@ -299,35 +301,46 @@ def test_normalize_at_max_returns_one(default_row):
     """normalize() returns 1.0 for the maximum bound."""
     sampler = UniformSampler(default_row)
     assert sampler.normalize(0.05, SampleContext()) == pytest.approx(1.0)
-    
-    
+
+
 def test_normalize_at_min_pft_returns_zero(pft_uniform_row, pft_sheet):
     """normalize() returns 0.0 for minimum bounds for PFT-specific bounds."""
     sampler = UniformSampler(pft_uniform_row, pft_sheet=pft_sheet)
     result = sampler.normalize([0.005, 0.004, 0.008], SampleContext())
     np.testing.assert_allclose(result, [0.0, 0.0, 0.0])
-    
+
+
 def test_normalize_at_max_pft_returns_zero(pft_uniform_row, pft_sheet):
     """normalize() returns 1.0 for maximum bounds for PFT-specific bounds."""
     sampler = UniformSampler(pft_uniform_row, pft_sheet=pft_sheet)
     result = sampler.normalize([0.040, 0.035, 0.060], SampleContext())
     np.testing.assert_allclose(result, [1.0, 1.0, 1.0])
-    
+
+
 def test_normalize_at_max_percent_returns_one(percent_row):
     """normalize() returns 1.0 for maximum bounds for percent bounds."""
     sampler = UniformSampler(percent_row)
-    assert sampler.normalize(15.0, SampleContext(default_value=10.0)) == pytest.approx(1.0)
-    
+    assert sampler.normalize(15.0, SampleContext(default_value=10.0)) == pytest.approx(
+        1.0
+    )
+
+
 def test_normalize_at_min_percent_returns_zero(percent_row):
     """normalize() returns 0.0 for minimum bounds for percent bounds."""
     sampler = UniformSampler(percent_row)
-    assert sampler.normalize(5.0, SampleContext(default_value=10.0)) == pytest.approx(0.0)
+    assert sampler.normalize(5.0, SampleContext(default_value=10.0)) == pytest.approx(
+        0.0
+    )
+
 
 def test_normalize_at_midpoint_percent_returns_half(percent_row):
     """normalize() returns 0.5 for halfway between min and max bounds for percent bounds."""
     sampler = UniformSampler(percent_row)
     default_val = 10.0
-    assert sampler.normalize(default_val, SampleContext(default_value=default_val)) == pytest.approx(0.5)
+    assert sampler.normalize(
+        default_val, SampleContext(default_value=default_val)
+    ) == pytest.approx(0.5)
+
 
 # ===========================================================================
 # PosteriorSampler.__init__
@@ -374,12 +387,15 @@ def test_posterior_sampler_broadcast_fills_all_indices(
     result = sampler.sample(0.5, ctx)
     assert result[0][0] == pytest.approx(result[0][1])
     assert result[0][1] == pytest.approx(result[0][2])
-    
+
+
 def test_posterior_sampler_multi_source_fills_correct_indices(
     joint_param_row, multi_source_posterior_config
 ):
     """_draw_broadcast fills each array index from the correct source."""
-    sampler = PosteriorSampler(joint_param_row, posterior_config=multi_source_posterior_config)
+    sampler = PosteriorSampler(
+        joint_param_row, posterior_config=multi_source_posterior_config
+    )
     ctx = SampleContext(n_indices=3)
     result = sampler.sample(0.5, ctx)
 
@@ -394,7 +410,8 @@ def test_posterior_sampler_multi_source_fills_correct_indices(
 # ===========================================================================
 # PosteriorSampler.sample: per-index draw
 # ===========================================================================
-    
+
+
 def test_posterior_sampler_per_index_returns_list_of_single_element_arrays(
     joint_param_row, posterior_config
 ):
@@ -404,7 +421,8 @@ def test_posterior_sampler_per_index_returns_list_of_single_element_arrays(
     result = sampler.sample(0.5, ctx)
     assert isinstance(result, list)
     assert all(len(r) == 1 for r in result)
-    
+
+
 def test_posterior_sampler_no_index_match_raises(joint_param_row, posterior_file):
     """sample() raises ValueError when no source covers the index."""
     config = {
@@ -414,4 +432,3 @@ def test_posterior_sampler_no_index_match_raises(joint_param_row, posterior_file
     sampler = PosteriorSampler(joint_param_row, posterior_config=config)
     with pytest.raises(ValueError, match="No source found"):
         sampler.sample(0.5, SampleContext(array_index=99))
-

@@ -1,8 +1,10 @@
 """Utility functions"""
+
 from __future__ import annotations
 
 from pathlib import Path
 import pandas as pd
+
 
 def read_param_list(
     param_data_file: Path,
@@ -25,4 +27,3 @@ def read_param_list(
         if sheet != "main":
             pft_sheets[f"{sheet}"] = pd.read_excel(xl, sheet_name=sheet)
     return main, pft_sheets
-

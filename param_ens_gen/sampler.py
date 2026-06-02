@@ -17,14 +17,15 @@ import numpy as np
 from .distribution_stat import DistributionStat
 from .posterior_source import PosteriorSource, _DEFAULT_SORT_INDEX
 
+
 @dataclass
 class SampleContext:
     """Sampling context passed to Sampler.
- 
+
     Each Sampler subclass uses only the fields relevant to it and ignores
     the rest. This avoids a mixed-concern signature on the abstract interface
     where some arguments are only meaningful to one subclass.
- 
+
     Attributes
     ----------
     default_value : float | np.ndarray | list[np.ndarray] | None
@@ -41,7 +42,7 @@ class SampleContext:
         Used by PosteriorSampler in broadcast mode to size the output arrays.
         Ignored by UniformSampler.
     """
- 
+
     default_value: float | np.ndarray | list[np.ndarray] | None = None
     array_index: int | None = None
     n_indices: list[int] | None = None
@@ -62,7 +63,7 @@ class Sampler(ABC):
     def __init_subclass__(cls, sampler_type: str, **kwargs):
         super().__init_subclass__(**kwargs)
         Sampler._registry[sampler_type] = cls
-        
+
     @classmethod
     def from_row_and_sheet(
         cls,
@@ -95,7 +96,6 @@ class Sampler(ABC):
             row, pft_sheet, posterior_config
         )  # pylint: disable=not-callable
 
-
     @abstractmethod
     def sample(
         self,
@@ -106,7 +106,7 @@ class Sampler(ABC):
 
         Args:
             normalized_value (float): normalized [0-1] input value
-            context: Sampling context. Each subclass uses the fields relevant to its 
+            context: Sampling context. Each subclass uses the fields relevant to its
                 strategy and ignores the rest.
         Returns:
             float | np.ndarray: sampled parameter value.
@@ -122,12 +122,13 @@ class Sampler(ABC):
 
         Args:
             value (float | np.ndarray): concrete parameter to normalize
-            context: Sampling context. Each subclass uses the fields relevant to its 
+            context: Sampling context. Each subclass uses the fields relevant to its
                 strategy and ignores the rest.
-            
+
         Returns:
             float | np.ndarray: normalized value(s) in [0 to 1]
         """
+
 
 class UniformSampler(Sampler, sampler_type="uniform"):
     """Uniform Sampler - scales between a minimum and a maximum given an input [0-1] value
@@ -187,12 +188,12 @@ class UniformSampler(Sampler, sampler_type="uniform"):
     ) -> float | np.ndarray:
         """Generate a sample for a parameter"""
         if normalized_value > 1.0:
-            raise ValueError (
+            raise ValueError(
                 f"normalized_value={normalized_value}. "
                 "Cannot use a normalized_value greater than 1.0"
             )
         if normalized_value < 0.0:
-            raise ValueError (
+            raise ValueError(
                 f"normalized_value={normalized_value}. "
                 "Cannot use a normalized_value less than 0.0"
             )
@@ -206,14 +207,14 @@ class UniformSampler(Sampler, sampler_type="uniform"):
     ) -> float | np.ndarray:
         """Convert a concrete parameter value into a normalized [0, 1] value."""
         min_val, max_val = self.resolve_bounds(context.default_value)
-        
+
         if np.any(value > max_val):
-            raise ValueError (
+            raise ValueError(
                 f"value: {value} exceeds maximum value(s). "
                 f"maximum value is {max_val}"
             )
         if np.any(value < min_val):
-            raise ValueError (
+            raise ValueError(
                 f"value: {value} is below minimum value(s). "
                 f"minimum value is {min_val}"
             )
@@ -249,12 +250,14 @@ class PosteriorSampler(Sampler, sampler_type="posterior"):
                 path=Path(file_entry["path"]),
                 array_indices=file_entry["array_indices"],
                 parameters=self.parameters,
-                sort_param_index=posterior_config.get("sort_index", _DEFAULT_SORT_INDEX),
+                sort_param_index=posterior_config.get(
+                    "sort_index", _DEFAULT_SORT_INDEX
+                ),
             )
             for file_entry in posterior_config["files"]
         ]
         self.sources = sources
-        
+
     def sample(
         self,
         normalized_value: float,
@@ -274,9 +277,10 @@ class PosteriorSampler(Sampler, sampler_type="posterior"):
         if context.array_index is not None:
             return self._unscale_for_index(value, context.array_index)
         return self._unscale_broadcast(value, context.n_indices)
-        
-    
-    def _draw_for_index(self, normalized_value: float, array_index: int) -> list[np.ndarray]:
+
+    def _draw_for_index(
+        self, normalized_value: float, array_index: int
+    ) -> list[np.ndarray]:
         """draws from a PosteriorSource given an input array_index
 
         Args:
@@ -289,9 +293,9 @@ class PosteriorSampler(Sampler, sampler_type="posterior"):
         source = self._source_for_index(array_index)
         row = source.draw_row(normalized_value)
         return [np.array([row[v]]) for v in self.parameters]
-    
+
     def _unscale_for_index(self, value: float, array_index: int) -> float:
-        """convert a concrete parameter value into a normalized [0-1] value for a 
+        """convert a concrete parameter value into a normalized [0-1] value for a
         specific array index
 
         Args:
@@ -324,7 +328,9 @@ class PosteriorSampler(Sampler, sampler_type="posterior"):
             f"Check your posterior_sources.yaml."
         )
 
-    def _unscale_broadcast(self, value: float, n_indices: list[int] | None) -> list[np.ndarray]:
+    def _unscale_broadcast(
+        self, value: float, n_indices: list[int] | None
+    ) -> list[np.ndarray]:
         result = [np.zeros(n_indices) for _ in self.parameters]
         if len(self.sources) == 1 and self.sources[0].is_broadcast:
             unscaled = self.sources[0].unscale(value)
@@ -340,8 +346,10 @@ class PosteriorSampler(Sampler, sampler_type="posterior"):
                     for k, var in enumerate(self.parameters):
                         result[k][array_idx] = row
         return result
-    
-    def _draw_broadcast(self, normalized_value: float, n_indices: list[int] | None) -> list[np.ndarray]:
+
+    def _draw_broadcast(
+        self, normalized_value: float, n_indices: list[int] | None
+    ) -> list[np.ndarray]:
         result = [np.zeros(n_indices) for _ in self.parameters]
 
         if len(self.sources) == 1 and self.sources[0].is_broadcast:

@@ -16,6 +16,7 @@ N_ORGANS = 4
 # ParamSpec fixtures
 # ========================================================================================
 
+
 def _base_row(**kwargs) -> pd.Series:
     """Build a minimal valid main-sheet row, with overrides."""
     defaults = {
@@ -37,10 +38,11 @@ def _base_row(**kwargs) -> pd.Series:
     defaults.update(kwargs)
     return pd.Series(defaults)
 
+
 @pytest.fixture
 def default_row() -> pd.Series:
     """A valid row for a default PFT parameter.
- 
+
     Returns:
         pd.Series: spreadsheet row
     """
@@ -50,7 +52,7 @@ def default_row() -> pd.Series:
 @pytest.fixture
 def scalar_row() -> pd.Series:
     """A valid row for a scalar (non-PFT) default parameter.
- 
+
     Returns:
         pd.Series: spreadsheet row
     """
@@ -69,7 +71,7 @@ def scalar_row() -> pd.Series:
 @pytest.fixture
 def sliced_row() -> pd.Series:
     """A valid row for a sliced parameter (fates_leafage_class x fates_pft).
- 
+
     Returns:
         pd.Series: spreadsheet row
     """
@@ -88,10 +90,11 @@ def sliced_row() -> pd.Series:
         base_params="fates_leaf_vcmax25top",
     )
 
+
 @pytest.fixture
 def scale_from_root_row() -> pd.Series:
     """A valid row for a scale_from_root parameter.
- 
+
     Returns:
         pd.Series: spreadsheet row
     """
@@ -113,7 +116,7 @@ def scale_from_root_row() -> pd.Series:
 @pytest.fixture
 def joint_param_row() -> pd.Series:
     """A valid row for a joint parameter.
- 
+
     Returns:
         pd.Series: spreadsheet row
     """
@@ -131,40 +134,46 @@ def joint_param_row() -> pd.Series:
         base_params="['fates_leafn_vert_scaler_coeff1', 'fates_leafn_vert_scaler_coeff2']",
     )
 
-    
+
 # ========================================================================================
 # PosteriorSource fixtures
 # ========================================================================================
 
+
 @pytest.fixture
 def posterior_file(tmp_path) -> Path:
     """A minimal posterior text file with two parameters and 20 rows.
- 
+
     Columns: param_a, param_b
     Values are shuffled so that _load's sort behaviour is actually tested.
- 
+
     Returns:
         Path: path to the temporary file
     """
     rng = np.random.default_rng(42)
     n = 20
-    data = pd.DataFrame({
-        "param_a": rng.permutation(np.linspace(0.0, 0.95, n)),
-        "param_b": rng.permutation(np.linspace(10.0, 19.5, n)),
-    })
+    data = pd.DataFrame(
+        {
+            "param_a": rng.permutation(np.linspace(0.0, 0.95, n)),
+            "param_b": rng.permutation(np.linspace(10.0, 19.5, n)),
+        }
+    )
     path = tmp_path / "posterior.txt"
     data.to_csv(path, sep=" ", index=False)
     return path
+
 
 @pytest.fixture
 def posterior_file_2(tmp_path) -> Path:
     """A second minimal posterior file for multi-source tests."""
     rng = np.random.default_rng(99)
     n = 20
-    data = pd.DataFrame({
-        "param_a": rng.permutation(np.linspace(1.0, 1.95, n)),
-        "param_b": rng.permutation(np.linspace(20.0, 29.5, n)),
-    })
+    data = pd.DataFrame(
+        {
+            "param_a": rng.permutation(np.linspace(1.0, 1.95, n)),
+            "param_b": rng.permutation(np.linspace(20.0, 29.5, n)),
+        }
+    )
     path = tmp_path / "posterior_2.txt"
     data.to_csv(path, sep=" ", index=False)
     return path
@@ -173,24 +182,27 @@ def posterior_file_2(tmp_path) -> Path:
 @pytest.fixture
 def empty_posterior_file(tmp_path) -> Path:
     """An empty posterior text file with two parameters.
- 
+
     Columns: param_a, param_b
- 
+
     Returns:
         Path: path to the temporary file
     """
-    data = pd.DataFrame({
-        "param_a": [],
-        "param_b": [],
-    })
+    data = pd.DataFrame(
+        {
+            "param_a": [],
+            "param_b": [],
+        }
+    )
     path = tmp_path / "empty_posterior.txt"
     data.to_csv(path, sep=" ", index=False)
     return path
- 
+
+
 @pytest.fixture
 def posterior_source(posterior_file) -> PosteriorSource:
     """A PosteriorSource pointing at posterior_file, not yet loaded.
- 
+
     Returns:
         PosteriorSource: unloaded source
     """
@@ -200,10 +212,11 @@ def posterior_source(posterior_file) -> PosteriorSource:
         parameters=["param_a", "param_b"],
     )
 
+
 @pytest.fixture
 def empty_posterior_source(empty_posterior_file) -> PosteriorSource:
     """A PosteriorSource pointing at empty_posterior_file, not yet loaded.
- 
+
     Returns:
         PosteriorSource: unloaded source
     """
@@ -213,14 +226,16 @@ def empty_posterior_source(empty_posterior_file) -> PosteriorSource:
         parameters=["param_a", "param_b"],
     )
 
+
 # ===========================================================================
 # DistributionStat fixtures
 # ===========================================================================
 
+
 @pytest.fixture
 def percent_row() -> pd.Series:
     """A valid row for a parameter with percent-based bounds.
- 
+
     Returns:
         pd.Series: spreadsheet row
     """
@@ -230,25 +245,28 @@ def percent_row() -> pd.Series:
         param_max="50percent",
     )
 
+
 @pytest.fixture
 def pft_sheet() -> pd.DataFrame:
     """A minimal per-parameter PFT bounds sheet with 3 PFTs.
- 
+
     Returns:
         pd.DataFrame: PFT bounds sheet
     """
-    return pd.DataFrame({
-        "pft_index": [1, 2, 3],
-        "pft_name": ["white_spruce", "black_spruce", "deciduous"],
-        "param_min": [0.005, 0.004, 0.008],
-        "param_max": [0.040, 0.035, 0.060],
-    })
+    return pd.DataFrame(
+        {
+            "pft_index": [1, 2, 3],
+            "pft_name": ["white_spruce", "black_spruce", "deciduous"],
+            "param_min": [0.005, 0.004, 0.008],
+            "param_max": [0.040, 0.035, 0.060],
+        }
+    )
 
 
 @pytest.fixture
 def pft_row(pft_sheet) -> pd.Series:
     """A valid row for a parameter with PFT-specific bounds.
- 
+
     Returns:
         pd.Series: spreadsheet row
     """
@@ -258,17 +276,18 @@ def pft_row(pft_sheet) -> pd.Series:
         param_max="pft",
     )
 
+
 # ===========================================================================
 # Sampler fixtures
 # ===========================================================================
- 
- 
+
+
 @pytest.fixture
 def posterior_config(posterior_file) -> dict:
     """A minimal posterior_config dict pointing at posterior_file.
- 
+
     Covers a single broadcast source (array_indices='all') for two parameters.
- 
+
     Returns:
         dict: posterior config
     """
@@ -282,10 +301,11 @@ def posterior_config(posterior_file) -> dict:
         ],
     }
 
+
 @pytest.fixture
 def multi_source_posterior_config(posterior_file, posterior_file_2) -> dict:
     """A posterior_config dict pointing at two non-broadcast sources covering different indices.
- 
+
     Returns:
         dict: posterior config
     """
@@ -296,14 +316,11 @@ def multi_source_posterior_config(posterior_file, posterior_file_2) -> dict:
                 "path": str(posterior_file),
                 "array_indices": [0, 1],
             },
-            {
-                "path": str(posterior_file_2),
-                "array_indices": [2]
-            }
+            {"path": str(posterior_file_2), "array_indices": [2]},
         ],
     }
- 
- 
+
+
 @pytest.fixture
 def pft_uniform_row(pft_sheet) -> pd.Series:
     """A valid row for a uniform parameter with PFT-specific bounds."""
@@ -313,6 +330,7 @@ def pft_uniform_row(pft_sheet) -> pd.Series:
         param_min="pft",
         param_max="pft",
     )
+
 
 # ===========================================================================
 # Parameter fixtures
@@ -341,8 +359,7 @@ def default_ds() -> xr.Dataset:
             # sliced parameter (leafage_class x pft)
             "fates_leaf_vcmax25top": (
                 ["fates_leafage_class", "fates_pft"],
-                np.array([[50.0, 60.0, 70.0],
-                          [40.0, 50.0, 60.0]]),
+                np.array([[50.0, 60.0, 70.0], [40.0, 50.0, 60.0]]),
             ),
             # scale_from_root — root and dependent
             "fates_nonhydro_smpso": (

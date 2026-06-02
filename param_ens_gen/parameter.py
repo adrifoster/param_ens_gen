@@ -41,11 +41,11 @@ class Parameter(ABC):
         Class for parameter sampling
     active_index: DimIndex | None
         Set by the expansion step on expanded Parameters. Records which dimension
-        and index this Parameter is responsible for. None on unexpanded Parameters.  
+        and index this Parameter is responsible for. None on unexpanded Parameters.
     """
 
     _registry: dict[str, type[Parameter]] = {}
-    
+
     def __init_subclass__(cls, param_type: str, **kwargs):
         super().__init_subclass__(**kwargs)
         Parameter._registry[param_type] = cls
@@ -101,29 +101,32 @@ class Parameter(ABC):
                 f"Valid types: {sorted(cls._registry)}"
             )
         return subclass(row, default_ds, pft_sheet, posterior_config)
-    
+
     @property
-    def free_dims(self)-> str | list[str] | None :
+    def free_dims(self) -> str | list[str] | None:
         """The free dimensions for this parameter, or None for scalars.
-        
+
         For sliced parameters the slice dimension is excluded, leaving at most
         one free dimension. For scalar parameters (no dims) this returns None
-        
+
         Returns:
             str | list[str] | None: Dimension name(s), or None when this parameter is scalar.
-        
+
         """
         if self.spec.slice_dim is None:
             free_dims = self.spec.dims
         else:
             free_dims = [d for d in self.spec.dims if d != self.spec.slice_dim]
         return free_dims if free_dims else None
-    
 
     @property
     def n_indices(self) -> list[int]:
         """Number of positions along the free dimension (1 for scalars)."""
-        return [self._dim_sizes.get(dim, 1) for dim in self.free_dims] if self.free_dims else [1]
+        return (
+            [self._dim_sizes.get(dim, 1) for dim in self.free_dims]
+            if self.free_dims
+            else [1]
+        )
 
     def _validate_specs(self) -> None:
         """Validate type-specific required fields on self.spec.
@@ -179,19 +182,18 @@ class Parameter(ABC):
                     raise ValueError(
                         f"Parameter '{self.spec.name}': has dimensions {self.n_indices} "
                         "And has a PosteriorSampler not using broadcast mode. "
-                        "Currently this is not supported. " 
+                        "Currently this is not supported. "
                         "PosteriorSampler parameters must have only one dimension or "
                         "have array_indices = 'all'"
-                    )    
+                    )
                 # we must check that the input array_indices will fit in this dim
                 if np.any(source.array_indices < self.n_indices[0]):
-                        raise ValueError(
-                            f"Parameter '{self.spec.name}': dimension mismatch between "
-                            "default dataset and posterior sampler array_indices. "
-                            f"array_indices: {source.array_indices} "
-                            f"parameter indices: {self.n_indices[0]}."
-                        ) 
-            
+                    raise ValueError(
+                        f"Parameter '{self.spec.name}': dimension mismatch between "
+                        "default dataset and posterior sampler array_indices. "
+                        f"array_indices: {source.array_indices} "
+                        f"parameter indices: {self.n_indices[0]}."
+                    )
 
     @abstractmethod
     def _variables_to_validate(self) -> list[str]:
@@ -205,7 +207,7 @@ class Parameter(ABC):
         Returns:
             List of variable name strings.
         """
-        
+
     def sample(
         self,
         normalized_value: float,
@@ -230,7 +232,7 @@ class Parameter(ABC):
         default_value = self.get_default(default_ds)
         context = self._build_context(default_value)
         return self.sampler.sample(normalized_value, context)
-    
+
     def _build_context(
         self,
         default_value: float | np.ndarray | list[np.ndarray],
@@ -240,13 +242,15 @@ class Parameter(ABC):
         Args:
             default_value: Default value(s) for this parameter.
             fixed_indices: Mapping of dimension name to fixed 0-based indices.
- 
+
         Returns:
             SampleContext populated for this parameter.
         """
         return SampleContext(
             default_value=default_value,
-            array_index=self.active_index.index if self.active_index is not None else None,
+            array_index=(
+                self.active_index.index if self.active_index is not None else None
+            ),
             n_indices=self.n_indices,
         )
 
@@ -281,7 +285,8 @@ class Parameter(ABC):
             fixed_indices (dict[str, list[int]] | None): Run-level mapping of dimension to
                 0-based indices to hold at default. None means no indices are fixed
         """
-    
+
+
 # ----------------------------------------------------------------------------------------
 # Concrete Parameter classes
 # ----------------------------------------------------------------------------------------
@@ -381,8 +386,8 @@ class SlicedParameter(Parameter, param_type="sliced"):
 
 class ScaleFromRootParameter(Parameter, param_type="scale_from_root"):
     """Parameter whose value is root + delta.
-    
-    
+
+
     .. warning::
         **Write-order dependency.** ``set_value`` reads the current value of
         ``ds[root_param]`` and expects it to have already been written during
@@ -454,13 +459,13 @@ class ScaleFromRootParameter(Parameter, param_type="scale_from_root"):
 
 class JointParameter(Parameter, param_type="joint"):
     """Parameter which stands for multiple connected parameters (e.g. posterior draws).
-    
+
     The ``value`` passed to ``set_value`` and returned by ``sample`` is a
     sequence of arrays — one per entry in ``spec.base_params``.  The type
     annotations on the base class use ``float | np.ndarray | list[np.ndarray]``
     for generality, but for this subclass only ``list[np.ndarray]`` (or any
     sequence of array-likes of the same length as ``base_params``) is valid.
-    
+
     """
 
     def _validate_specs(self):
@@ -484,7 +489,7 @@ class JointParameter(Parameter, param_type="joint"):
         value: float | np.ndarray | list[np.ndarray],
         fixed_indices: dict[str, list[int]] | None = None,
     ):
-        """"Write a list of arrays into the dataset, one per base_param.
+        """ "Write a list of arrays into the dataset, one per base_param.
 
         Args:
             ds (xr.Dataset): Working copy of the parameter dataset. Modified in place.
@@ -505,14 +510,14 @@ class JointParameter(Parameter, param_type="joint"):
                 f"{len(self.spec.base_params)} arrays (one per base_param) but "
                 f"got a non-iterable value of type {type(value).__name__}."
             ) from te
-        
+
         if len(value_seq) != len(self.spec.base_params):
             raise ValueError(
                 f"Parameter '{self.spec.name}' (joint): expected "
                 f"{len(self.spec.base_params)} arrays (one per base_param: "
                 f"{self.spec.base_params}) but got {len(value_seq)}."
             )
-        
+
         for parameter, val in zip(self.spec.base_params, value_seq):
             arr = ds[parameter].values.copy()
             if self.active_index is not None:
@@ -527,9 +532,11 @@ class JointParameter(Parameter, param_type="joint"):
 
             ds[parameter].values = arr
 
+
 # ----------------------------------------------------------------------------------------
 # Private helpers
 # ----------------------------------------------------------------------------------------
+
 
 def _broadcast_to_array(
     arr: np.ndarray,
@@ -541,7 +548,7 @@ def _broadcast_to_array(
 
     Scalar value: broadcast to every non-fixed position.
     Array value: must match arr shape; fixed positions are skipped.
-    
+
     The return type is always ``np.ndarray`` (or ``float`` for genuine 0-D
     inputs). Callers assigning back to ``ds[var].values`` should be aware that
     xarray will accept either, but downstream code expecting an ndarray should
@@ -565,10 +572,10 @@ def _broadcast_to_array(
             f"Parameter '{name}': value shape {value_arr.shape} does not "
             f"match target array shape {arr.shape}."
         )
-    
+
     result = arr.copy()
     free = [i for i in range(len(result)) if i not in fixed] if arr.ndim > 0 else None
-    
+
     if free is None:
         result = float(value_arr)
     elif value_arr.ndim == 0:
@@ -599,4 +606,3 @@ def _as_scalar(value: float | np.ndarray, name: str) -> float:
             f"array of shape {arr.shape}. Pass a scalar or expand the spec."
         )
     return float(arr)
-
