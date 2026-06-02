@@ -13,6 +13,7 @@ htmlcov/
 
 # conda/pip
 *.egg-link
+*.egg-info
 *.pth
 *.conda
 *.tar.bz2
