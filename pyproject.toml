@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+ 
+[project]
+name = "param_ens_gen"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = [
+"xarray",
+"numpy",
+"scipy",
+"pandas",
+"pyyaml",
+]
+ 
+[project.optional-dependencies]
+dev = ["pytest>=8", "pytest-cov", "pytest-mock", "black", "pylint"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["param_ens_gen*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.pylint.main]
+source-roots = ["param_ens_gen"]
+
+[tool.black]
+target-version = ["py310", "py311", "py312"]
+line-length = 88
