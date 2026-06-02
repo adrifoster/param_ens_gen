@@ -6,7 +6,7 @@ import xarray as xr
 import pytest
 from pathlib import Path
 
-from fates_calibration_library.param_ens_gen.posterior_source import PosteriorSource
+from param_ens_gen.posterior_source import PosteriorSource
 
 N_PFTS = 3
 N_LEAFAGE = 2

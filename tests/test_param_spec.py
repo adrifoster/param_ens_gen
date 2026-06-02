@@ -3,7 +3,7 @@
 
 import pytest
 
-from fates_calibration_library.param_ens_gen.param_spec import ParamSpec
+from param_ens_gen.param_spec import ParamSpec
 
 # ===========================================================================
 # ParamSpec.from_row: successful construction

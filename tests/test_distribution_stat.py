@@ -13,7 +13,7 @@ import numpy as np
 import pandas as pd
 import pytest
  
-from fates_calibration_library.param_ens_gen.distribution_stat import (
+from param_ens_gen.distribution_stat import (
     DistributionStat,
     FixedStat,
     PercentStat,

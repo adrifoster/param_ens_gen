@@ -4,13 +4,13 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from fates_calibration_library.param_ens_gen.sampler import (
+from param_ens_gen.sampler import (
     Sampler,
     SampleContext,
     UniformSampler,
     PosteriorSampler,
 )
-from fates_calibration_library.param_ens_gen.distribution_stat import (
+from param_ens_gen.distribution_stat import (
     FixedStat,
     PercentStat,
     PFTStat,
