@@ -114,10 +114,10 @@ class Parameter(ABC):
 
         """
         if self.spec.slice_dim is None:
-            free_dims = self.spec.dims
+            free = self.spec.dims
         else:
-            free_dims = [d for d in self.spec.dims if d != self.spec.slice_dim]
-        return free_dims if free_dims else None
+            free = [d for d in self.spec.dims if d != self.spec.slice_dim]
+        return free if free else None
 
     @property
     def n_indices(self) -> list[int]:
@@ -187,7 +187,7 @@ class Parameter(ABC):
                         "have array_indices = 'all'"
                     )
                 # we must check that the input array_indices will fit in this dim
-                if np.any(source.array_indices < self.n_indices[0]):
+                if np.any(source.array_indices >= self.n_indices[0]):
                     raise ValueError(
                         f"Parameter '{self.spec.name}': dimension mismatch between "
                         "default dataset and posterior sampler array_indices. "
@@ -241,8 +241,6 @@ class Parameter(ABC):
 
         Args:
             default_value: Default value(s) for this parameter.
-            fixed_indices: Mapping of dimension name to fixed 0-based indices.
-
         Returns:
             SampleContext populated for this parameter.
         """
@@ -268,7 +266,6 @@ class Parameter(ABC):
             float | np.ndarray | list[np.ndarray]: default value
         """
 
-    @abstractmethod
     def set_value(
         self,
         ds: xr.Dataset,
@@ -285,7 +282,55 @@ class Parameter(ABC):
             fixed_indices (dict[str, list[int]] | None): Run-level mapping of dimension to
                 0-based indices to hold at default. None means no indices are fixed
         """
+        if self.active_index is not None:
+            self._write_at_index(ds, self.active_index, value)
+        else:
+            self._write_full(ds, default_ds, value, fixed_indices or {})
 
+    @abstractmethod
+    def _write_at_index(
+        self,
+        ds: xr.Dataset,
+        index: DimIndex,
+        value: float | np.ndarray | list[np.ndarray],
+    ) -> None:
+        """Write a scalar to a single pinned position in the dataset.
+ 
+        Called when this parameter is expanded (``active_index`` is set).
+        ``value`` must be scalar (or a single-element array); subclasses
+        should enforce this via ``_as_scalar``.
+ 
+        Args:
+            ds (xr.Dataset): Working copy of the parameter dataset. Modified in place.
+            index (DimIndex): The dimension and position to write.
+            value (float | np.ndarray | list[np.ndarray]): Scalar value to write.
+        """
+ 
+    @abstractmethod
+    def _write_full(
+        self,
+        ds: xr.Dataset,
+        default_ds: xr.Dataset,
+        value: float | np.ndarray | list[np.ndarray],
+        fixed_indices: dict[str, list[int]],
+    ) -> None:
+        """Broadcast a value across all non-fixed positions in the dataset.
+ 
+        Called when this parameter is not expanded (``active_index`` is None).
+        ``value`` is either a scalar (broadcast to all free positions) or a
+        full-dimension array (the sampler always sees the full dimension).
+        ``fixed_indices`` is applied as a post-processing mask: those positions
+        are restored from ``default_ds`` after writing.
+ 
+        Args:
+            ds (xr.Dataset): Working copy of the parameter dataset. Modified in place.
+            default_ds (xr.Dataset): Unchanging default dataset. Used to restore
+                fixed positions.
+            value (float | np.ndarray | list[np.ndarray]): Scalar or full-dimension
+                array value to write.
+            fixed_indices (dict[str, list[int]]): Dimension-to-indices mapping for
+                positions to hold at default. Empty dict means no positions are fixed.
+        """
 
 # ----------------------------------------------------------------------------------------
 # Concrete Parameter classes
@@ -301,21 +346,26 @@ class DefaultParameter(Parameter, param_type="default"):
     def get_default(self, default_ds: xr.Dataset) -> np.ndarray:
         return default_ds[self.spec.name].values
 
-    def set_value(
+    def _write_at_index(
         self,
         ds: xr.Dataset,
-        default_ds: xr.Dataset,
         value: float | np.ndarray | list[np.ndarray],
-        fixed_indices: dict[str, list[int]] | None = None,
-    ) -> None:
+        index: DimIndex,
+    ):
         arr = ds[self.spec.name].values.copy()
-
-        if self.active_index is not None:
-            arr[self.active_index.index] = _as_scalar(value, self.spec.name)
-        else:
-            fixed = {}
-            arr = _broadcast_to_array(arr, value, fixed, self.spec.name)
-
+        arr[index.index] = _as_scalar(value, self.spec.name)
+        ds[self.spec.name].values = arr
+        
+    def _write_full(
+            self,
+            ds: xr.Dataset,
+            default_ds: xr.Dataset,
+            value: float | np.ndarray | list[np.ndarray],
+            fixed_indices: dict[str, list[int]]
+    ):
+        arr = ds[self.spec.name].values.copy()
+        fixed = fixed_indices.get(self.free_dims[0], []) if self.free_dims else []
+        arr = _broadcast_to_array(arr, value, fixed, self.spec.name)
         ds[self.spec.name].values = arr
 
 
@@ -353,37 +403,43 @@ class SlicedParameter(Parameter, param_type="sliced"):
             .values
         )
 
-    def set_value(
+    def _write_at_index(
+        self,
+        ds: xr.Dataset,
+        index: DimIndex,
+        value: float | np.ndarray | list[np.ndarray],
+    ) -> None:
+        
+        base_param_name = self.spec.base_params[0]
+        arr = ds[base_param_name].values.copy()
+        da_dims = list(ds[base_param_name].dims)
+        idx = self._slice_index_tuple(arr, da_dims)
+        idx[da_dims.index(index.dim)] = index.index
+        arr[tuple(idx)] = _as_scalar(value, base_param_name)
+        ds[base_param_name].values = arr
+        
+    def _slice_index_tuple(self, arr: np.ndarray, da_dims: list[str]) -> list:
+        """Build an index tuple pointing at the configured slice."""
+        idx = [slice(None)] * arr.ndim
+        idx[da_dims.index(self.spec.slice_dim)] = self.spec.slice_index
+        return idx
+                
+    def _write_full(
         self,
         ds: xr.Dataset,
         default_ds: xr.Dataset,
         value: float | np.ndarray | list[np.ndarray],
         fixed_indices: dict[str, list[int]] | None = None,
     ) -> None:
-        arr = ds[self.spec.base_params[0]].values.copy()
-        da_dims = list(ds[self.spec.base_params[0]].dims)
-        slice_axis = da_dims.index(self.spec.slice_dim)
-
-        # build index tuple pointing at the slice
-        idx = [slice(None)] * arr.ndim
-        idx[slice_axis] = self.spec.slice_index
-
-        if self.active_index is not None:
-            idx[da_dims.index(self.active_index.dim)] = self.active_index.index
-            arr[tuple(idx)] = _as_scalar(value, self.spec.base_params[0])
-        else:
-            fixed = (
-                (fixed_indices or {}).get(self.free_dim, []) if self.free_dim else []
-            )
-            slice_arr = arr[tuple(idx)].copy()
-            slice_arr = _broadcast_to_array(
-                slice_arr, value, fixed, self.spec.base_params[0]
-            )
-            arr[tuple(idx)] = slice_arr
-
-        ds[self.spec.base_params[0]].values = arr
-
-
+        base_param_name = self.spec.base_params[0]
+        arr = ds[base_param_name].values.copy()
+        da_dims = list(ds[base_param_name].dims)
+        idx = self._slice_index_tuple(arr, da_dims)
+        fixed = fixed_indices.get(self.free_dims[0], []) if self.free_dims else []
+        slice_arr = _broadcast_to_array(arr[tuple(idx)].copy(), value, fixed, base_param_name)
+        arr[tuple(idx)] = slice_arr
+        ds[base_param_name].values = arr
+      
 class ScaleFromRootParameter(Parameter, param_type="scale_from_root"):
     """Parameter whose value is root + delta.
 
@@ -577,7 +633,7 @@ def _broadcast_to_array(
     free = [i for i in range(len(result)) if i not in fixed] if arr.ndim > 0 else None
 
     if free is None:
-        result = float(value_arr)
+        result = np.asarray(float(value_arr))
     elif value_arr.ndim == 0:
         result[free] = float(value_arr)
     else:
