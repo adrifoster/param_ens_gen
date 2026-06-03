@@ -357,7 +357,10 @@ def test_posterior_sampler_constructs_sources(joint_param_row, posterior_config)
     """PosteriorSampler constructs one PosteriorSource per file entry."""
     sampler = PosteriorSampler(joint_param_row, posterior_config=posterior_config)
     assert len(sampler.sources) == 1
-    assert sampler.parameters == ["param_a", "param_b"]
+    assert sampler.parameters == [
+        "fates_leafn_vert_scaler_coeff1",
+        "fates_leafn_vert_scaler_coeff2",
+    ]
 
 
 # ===========================================================================
@@ -399,11 +402,11 @@ def test_posterior_sampler_multi_source_fills_correct_indices(
     ctx = SampleContext(n_indices=3)
     result = sampler.sample(0.5, ctx)
 
-    # indices 0 and 1 come from posterior_file (param_a in [0, 0.95])
+    # indices 0 and 1 come from posterior_file (fates_leafn_vert_scaler_coeff1 in [0, 0.95])
     assert 0.0 <= result[0][0] <= 0.95
     assert 0.0 <= result[0][1] <= 0.95
 
-    # index 2 comes from posterior_file_2 (param_a in [1.0, 1.95])
+    # index 2 comes from posterior_file_2 (fates_leafn_vert_scaler_coeff1 in [1.0, 1.95])
     assert 1.0 <= result[0][2] <= 1.95
 
 
@@ -426,7 +429,10 @@ def test_posterior_sampler_per_index_returns_list_of_single_element_arrays(
 def test_posterior_sampler_no_index_match_raises(joint_param_row, posterior_file):
     """sample() raises ValueError when no source covers the index."""
     config = {
-        "parameters": ["param_a", "param_b"],
+        "parameters": [
+            "fates_leafn_vert_scaler_coeff1",
+            "fates_leafn_vert_scaler_coeff2",
+        ],
         "files": [{"path": str(posterior_file), "array_indices": [0, 1]}],
     }
     sampler = PosteriorSampler(joint_param_row, posterior_config=config)

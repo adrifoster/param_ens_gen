@@ -61,7 +61,7 @@ class Parameter(ABC):
         self.sampler = Sampler.from_row_and_sheet(row, pft_sheet, posterior_config)
         self.active_index: Optional[DimIndex] = None
 
-        # store only sizes so we don't  hold a reference to the full dataset.
+        # store only sizes so we don't hold a reference to the full dataset.
         # this is used by the n_indices property without ordering constraints.
         self._dim_sizes: dict[str, int] = dict(default_ds.sizes)
 
@@ -134,7 +134,7 @@ class Parameter(ABC):
         Called from __init__ after self.spec is set. The base implementation
         is a no-op; subclasses override to assert the fields they require.
         This is intentionally not abstract — types with no extra required
-        fields (e.g. DefaultParameter) need not override.
+        fields (e.g. DefaultParameter) do not need to override.
         """
 
     def _validate_params(self, default_ds: xr.Dataset) -> None:

@@ -7,6 +7,12 @@ import pytest
 from pathlib import Path
 
 from param_ens_gen.posterior_source import PosteriorSource
+from param_ens_gen.parameter import (
+    DefaultParameter,
+    JointParameter,
+    ScaleFromRootParameter,
+    SlicedParameter,
+)
 
 N_PFTS = 3
 N_LEAFAGE = 2
@@ -154,8 +160,12 @@ def posterior_file(tmp_path) -> Path:
     n = 20
     data = pd.DataFrame(
         {
-            "param_a": rng.permutation(np.linspace(0.0, 0.95, n)),
-            "param_b": rng.permutation(np.linspace(10.0, 19.5, n)),
+            "fates_leafn_vert_scaler_coeff1": rng.permutation(
+                np.linspace(0.0, 0.95, n)
+            ),
+            "fates_leafn_vert_scaler_coeff2": rng.permutation(
+                np.linspace(10.0, 19.5, n)
+            ),
         }
     )
     path = tmp_path / "posterior.txt"
@@ -170,8 +180,12 @@ def posterior_file_2(tmp_path) -> Path:
     n = 20
     data = pd.DataFrame(
         {
-            "param_a": rng.permutation(np.linspace(1.0, 1.95, n)),
-            "param_b": rng.permutation(np.linspace(20.0, 29.5, n)),
+            "fates_leafn_vert_scaler_coeff1": rng.permutation(
+                np.linspace(1.0, 1.95, n)
+            ),
+            "fates_leafn_vert_scaler_coeff2": rng.permutation(
+                np.linspace(20.0, 29.5, n)
+            ),
         }
     )
     path = tmp_path / "posterior_2.txt"
@@ -183,15 +197,15 @@ def posterior_file_2(tmp_path) -> Path:
 def empty_posterior_file(tmp_path) -> Path:
     """An empty posterior text file with two parameters.
 
-    Columns: param_a, param_b
+    Columns: fates_leafn_vert_scaler_coeff1, fates_leafn_vert_scaler_coeff2
 
     Returns:
         Path: path to the temporary file
     """
     data = pd.DataFrame(
         {
-            "param_a": [],
-            "param_b": [],
+            "fates_leafn_vert_scaler_coeff1": [],
+            "fates_leafn_vert_scaler_coeff2": [],
         }
     )
     path = tmp_path / "empty_posterior.txt"
@@ -209,7 +223,7 @@ def posterior_source(posterior_file) -> PosteriorSource:
     return PosteriorSource(
         path=posterior_file,
         array_indices="all",
-        parameters=["param_a", "param_b"],
+        parameters=["fates_leafn_vert_scaler_coeff1", "fates_leafn_vert_scaler_coeff2"],
     )
 
 
@@ -223,7 +237,7 @@ def empty_posterior_source(empty_posterior_file) -> PosteriorSource:
     return PosteriorSource(
         path=empty_posterior_file,
         array_indices="all",
-        parameters=["param_a", "param_b"],
+        parameters=["fates_leafn_vert_scaler_coeff1", "fates_leafn_vert_scaler_coeff2"],
     )
 
 
@@ -241,6 +255,7 @@ def percent_row() -> pd.Series:
     """
     return _base_row(
         parameter_name="fates_leaf_vcmax25top",
+        coord="['fates_leafage_class', 'fates_pft']",
         param_min="50percent",
         param_max="50percent",
     )
@@ -292,7 +307,10 @@ def posterior_config(posterior_file) -> dict:
         dict: posterior config
     """
     return {
-        "parameters": ["param_a", "param_b"],
+        "parameters": [
+            "fates_leafn_vert_scaler_coeff1",
+            "fates_leafn_vert_scaler_coeff2",
+        ],
         "files": [
             {
                 "path": str(posterior_file),
@@ -310,7 +328,10 @@ def multi_source_posterior_config(posterior_file, posterior_file_2) -> dict:
         dict: posterior config
     """
     return {
-        "parameters": ["param_a", "param_b"],
+        "parameters": [
+            "fates_leafn_vert_scaler_coeff1",
+            "fates_leafn_vert_scaler_coeff2",
+        ],
         "files": [
             {
                 "path": str(posterior_file),
@@ -394,3 +415,38 @@ def working_ds(default_ds) -> xr.Dataset:
         xr.Dataset: working copy
     """
     return default_ds.copy(deep=True)
+
+
+# =============================================================================
+# Parameter fixtures
+# =============================================================================
+
+
+@pytest.fixture
+def default_param(default_row, default_ds) -> DefaultParameter:
+    """DefaultParameter for fates_leaf_slatop"""
+    return DefaultParameter(default_row, default_ds)
+
+
+@pytest.fixture
+def scalar_param(scalar_row, default_ds) -> DefaultParameter:
+    """DefaultParameter for scalar fates_canopy_closure_thresh."""
+    return DefaultParameter(scalar_row, default_ds)
+
+
+@pytest.fixture
+def sliced_param(sliced_row, default_ds) -> SlicedParameter:
+    """SlicedParameter for fates_leaf_vcmax25top, targeting fates_leafage_class index 0."""
+    return SlicedParameter(sliced_row, default_ds)
+
+
+@pytest.fixture
+def scale_param(scale_from_root_row, default_ds) -> ScaleFromRootParameter:
+    """ScaleFromRootParameter for fates_nonhydro_smpsc derived from fates_nonhydro_smpso."""
+    return ScaleFromRootParameter(scale_from_root_row, default_ds)
+
+
+@pytest.fixture
+def joint_param(joint_row, default_ds) -> JointParameter:
+    """JointParameter over fates_leafn_vert_scaler_coeff1 and _coeff2."""
+    return JointParameter(joint_row, default_ds)
