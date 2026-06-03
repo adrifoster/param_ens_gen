@@ -186,8 +186,8 @@ class Parameter(ABC):
                         "PosteriorSampler parameters must have only one dimension or "
                         "have array_indices = 'all'"
                     )
-                # we must check that the input array_indices will fit in this dim
-                if np.any(source.array_indices >= self.n_indices[0]):
+                # check that the input array_indices will fit in this dim
+                if np.any(np.array(source.array_indices) >= self.n_indices[0]):
                     raise ValueError(
                         f"Parameter '{self.spec.name}': dimension mismatch between "
                         "default dataset and posterior sampler array_indices. "
@@ -343,14 +343,14 @@ class DefaultParameter(Parameter, param_type="default"):
     def _variables_to_validate(self) -> list[str]:
         return [self.spec.name]
 
-    def get_default(self, default_ds: xr.Dataset) -> np.ndarray:
+    def get_default(self, default_ds: xr.Dataset) -> float | np.ndarray | list[np.ndarray] :
         return default_ds[self.spec.name].values
 
     def _write_at_index(
         self,
         ds: xr.Dataset,
-        value: float | np.ndarray | list[np.ndarray],
         index: DimIndex,
+        value: float | np.ndarray | list[np.ndarray],
     ):
         arr = ds[self.spec.name].values.copy()
         arr[index.index] = _as_scalar(value, self.spec.name)

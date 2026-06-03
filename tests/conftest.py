@@ -75,6 +75,19 @@ def scalar_row() -> pd.Series:
 
 
 @pytest.fixture
+def multi_dim_row() -> pd.Series:
+    """A valid row for a multi-dimensional default parameter.
+
+    Returns:
+        pd.Series: spreadsheet row
+    """
+    return _base_row(
+        parameter_name="parameter_a",
+        coord="['dim_1', 'dim_2']",
+    )
+
+
+@pytest.fixture
 def sliced_row() -> pd.Series:
     """A valid row for a sliced parameter (fates_leafage_class x fates_pft).
 
@@ -400,6 +413,10 @@ def default_ds() -> xr.Dataset:
                 ["fates_pft"],
                 np.array([2.1, 2.5, 2.6]),
             ),
+            "parameter_a": (
+                ["dim_1", "dim_2"],
+                np.array([[50.0, 60.0, 70.0], [40.0, 50.0, 60.0]]),
+            ),
         }
     )
 
@@ -426,6 +443,12 @@ def working_ds(default_ds) -> xr.Dataset:
 def default_param(default_row, default_ds) -> DefaultParameter:
     """DefaultParameter for fates_leaf_slatop"""
     return DefaultParameter(default_row, default_ds)
+
+
+@pytest.fixture
+def multi_dim_param(multi_dim_row, default_ds) -> DefaultParameter:
+    """DefaultParameter for a multi-dimensional parameter"""
+    return DefaultParameter(multi_dim_row, default_ds)
 
 
 @pytest.fixture
