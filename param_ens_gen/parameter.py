@@ -408,7 +408,7 @@ class SlicedParameter(Parameter, param_type="sliced"):
         ds: xr.Dataset,
         index: DimIndex,
         value: float | np.ndarray | list[np.ndarray],
-    ) -> None:
+    ):
         
         base_param_name = self.spec.base_params[0]
         arr = ds[base_param_name].values.copy()
@@ -430,7 +430,7 @@ class SlicedParameter(Parameter, param_type="sliced"):
         default_ds: xr.Dataset,
         value: float | np.ndarray | list[np.ndarray],
         fixed_indices: dict[str, list[int]] | None = None,
-    ) -> None:
+    ):
         base_param_name = self.spec.base_params[0]
         arr = ds[base_param_name].values.copy()
         da_dims = list(ds[base_param_name].dims)
@@ -482,36 +482,42 @@ class ScaleFromRootParameter(Parameter, param_type="scale_from_root"):
     def get_default(self, default_ds: xr.Dataset) -> np.ndarray:
         return default_ds[self.spec.base_params[0]].values
 
-    def set_value(
+    def _write_at_index(
+        self,
+        ds: xr.Dataset,
+        index: DimIndex,
+        value: float | np.ndarray | list[np.ndarray],
+    ):
+        # root_param must already be written by the caller — see class docstring.
+        base_param_name = self.spec.base_params[0]
+        arr = ds[base_param_name].values.copy()
+        root_arr = ds[self.spec.root_param].values
+        delta = _as_scalar(value, base_param_name)
+        arr[index.index] = root_arr[index.index] + delta
+        ds[base_param_name].values = arr
+
+    def _write_full(
         self,
         ds: xr.Dataset,
         default_ds: xr.Dataset,
         value: float | np.ndarray | list[np.ndarray],
-        fixed_indices: dict[str, list[int]] | None = None,
-    ) -> None:
+        fixed_indices: dict[str, list[int]],
+    ):
         # root_param must already be written by the caller — see class docstring.
-        root_arr = ds[self.spec.root_param].values.copy()  # already written
-        arr = ds[self.spec.base_params[0]].values.copy()
-        delta = value
-
-        if self.active_index is not None:
-            i = self.active_index.index
-            arr[i] = root_arr[i] + delta
+        base_param_name = self.spec.base_params[0]
+        root_arr = ds[self.spec.root_param].values
+        default_arr = default_ds[base_param_name].values
+        fixed = fixed_indices.get(self.free_dims[0], []) if self.free_dims else []
+ 
+        if np.ndim(value) == 0:
+            new_arr = _broadcast_to_array(root_arr, value, [], base_param_name)
         else:
-            fixed = (
-                (fixed_indices or {}).get(self.free_dim, []) if self.free_dim else []
-            )
-
-            if arr.ndim == 0 or not self.free_dim:
-                arr = root_arr + delta
-            else:
-                default_arr = default_ds[self.spec.base_params[0]].values
-                arr = root_arr + delta
-                if fixed:
-                    arr[fixed] = default_arr[fixed]
-
-        ds[self.spec.base_params[0]].values = arr
-
+            new_arr = root_arr + np.asarray(value)
+ 
+        if fixed:
+            new_arr[fixed] = default_arr[fixed]
+ 
+        ds[base_param_name].values = new_arr
 
 class JointParameter(Parameter, param_type="joint"):
     """Parameter which stands for multiple connected parameters (e.g. posterior draws).
@@ -537,13 +543,41 @@ class JointParameter(Parameter, param_type="joint"):
 
     def get_default(self, default_ds: xr.Dataset) -> list[np.ndarray]:
         return [default_ds[p].values for p in self.spec.base_params]
+    
+    
+    def _coerce_value_seq(
+        self,
+        value: float | np.ndarray | list[np.ndarray]
+    ) -> list[np.ndarray]:
+        """Validate and return value as a list aligned with base_params
 
-    def set_value(
+        Args:
+            value (float | np.ndarray | list[np.ndarray]): input value
+
+        Returns:
+            list[np.ndarray]: output list
+        """
+        try:
+            value_seq = list(value)
+        except TypeError as te:
+            raise TypeError(
+                f"Parameter '{self.spec.name}' (joint): expected a sequence of "
+                f"{len(self.spec.base_params)} arrays (one per base_param) but "
+                f"got a non-iterable value of type {type(value).__name__}."
+            ) from te
+        if len(value_seq) != len(self.spec.base_params):
+            raise ValueError(
+                f"Parameter '{self.spec.name}' (joint): expected "
+                f"{len(self.spec.base_params)} arrays (one per base_param: "
+                f"{self.spec.base_params}) but got {len(value_seq)}."
+            )
+        return value_seq
+
+    def _write_at_index(
         self,
         ds: xr.Dataset,
-        default_ds: xr.Dataset,
+        index: DimIndex,
         value: float | np.ndarray | list[np.ndarray],
-        fixed_indices: dict[str, list[int]] | None = None,
     ):
         """ "Write a list of arrays into the dataset, one per base_param.
 
@@ -558,34 +592,22 @@ class JointParameter(Parameter, param_type="joint"):
             TypeError: If ``value`` is not iterable (e.g. a bare float was passed).
             ValueError: If ``len(value)`` does not match ``len(spec.base_params)``.
         """
-        try:
-            value_seq = list(value)
-        except TypeError as te:
-            raise TypeError(
-                f"Parameter '{self.spec.name}' (joint): expected a sequence of "
-                f"{len(self.spec.base_params)} arrays (one per base_param) but "
-                f"got a non-iterable value of type {type(value).__name__}."
-            ) from te
-
-        if len(value_seq) != len(self.spec.base_params):
-            raise ValueError(
-                f"Parameter '{self.spec.name}' (joint): expected "
-                f"{len(self.spec.base_params)} arrays (one per base_param: "
-                f"{self.spec.base_params}) but got {len(value_seq)}."
-            )
-
-        for parameter, val in zip(self.spec.base_params, value_seq):
+        for parameter, val in zip(self.spec.base_params, self._coerce_value_seq(value)):
             arr = ds[parameter].values.copy()
-            if self.active_index is not None:
-                arr[self.active_index.index] = _as_scalar(val, parameter)
-            else:
-                fixed = (
-                    (fixed_indices or {}).get(self.free_dim, [])
-                    if self.free_dim
-                    else []
-                )
-                arr = _broadcast_to_array(arr, val, fixed, parameter)
-
+            arr[index.index] = _as_scalar(val, parameter)
+            ds[parameter].values = arr
+            
+    def _write_full(
+        self,
+        ds: xr.Dataset,
+        default_ds: xr.Dataset,
+        value: float | np.ndarray | list[np.ndarray],
+        fixed_indices: dict[str, list[int]],
+    ):
+        fixed = fixed_indices.get(self.free_dims[0], []) if self.free_dims else []
+        for parameter, val in zip(self.spec.base_params, self._coerce_value_seq(value)):
+            arr = ds[parameter].values.copy()
+            arr = _broadcast_to_array(arr, val, fixed, parameter)
             ds[parameter].values = arr
 
 
