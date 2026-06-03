@@ -470,6 +470,8 @@ def scale_param(scale_from_root_row, default_ds) -> ScaleFromRootParameter:
 
 
 @pytest.fixture
-def joint_param(joint_row, default_ds) -> JointParameter:
+def joint_param(joint_param_row, default_ds, posterior_config) -> JointParameter:
     """JointParameter over fates_leafn_vert_scaler_coeff1 and _coeff2."""
-    return JointParameter(joint_row, default_ds)
+    return JointParameter(
+        joint_param_row, default_ds, posterior_config=posterior_config
+    )

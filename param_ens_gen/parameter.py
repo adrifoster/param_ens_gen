@@ -295,17 +295,17 @@ class Parameter(ABC):
         value: float | np.ndarray | list[np.ndarray],
     ) -> None:
         """Write a scalar to a single pinned position in the dataset.
- 
+
         Called when this parameter is expanded (``active_index`` is set).
         ``value`` must be scalar (or a single-element array); subclasses
         should enforce this via ``_as_scalar``.
- 
+
         Args:
             ds (xr.Dataset): Working copy of the parameter dataset. Modified in place.
             index (DimIndex): The dimension and position to write.
             value (float | np.ndarray | list[np.ndarray]): Scalar value to write.
         """
- 
+
     @abstractmethod
     def _write_full(
         self,
@@ -315,13 +315,13 @@ class Parameter(ABC):
         fixed_indices: dict[str, list[int]],
     ) -> None:
         """Broadcast a value across all non-fixed positions in the dataset.
- 
+
         Called when this parameter is not expanded (``active_index`` is None).
         ``value`` is either a scalar (broadcast to all free positions) or a
         full-dimension array (the sampler always sees the full dimension).
         ``fixed_indices`` is applied as a post-processing mask: those positions
         are restored from ``default_ds`` after writing.
- 
+
         Args:
             ds (xr.Dataset): Working copy of the parameter dataset. Modified in place.
             default_ds (xr.Dataset): Unchanging default dataset. Used to restore
@@ -331,6 +331,7 @@ class Parameter(ABC):
             fixed_indices (dict[str, list[int]]): Dimension-to-indices mapping for
                 positions to hold at default. Empty dict means no positions are fixed.
         """
+
 
 # ----------------------------------------------------------------------------------------
 # Concrete Parameter classes
@@ -343,7 +344,9 @@ class DefaultParameter(Parameter, param_type="default"):
     def _variables_to_validate(self) -> list[str]:
         return [self.spec.name]
 
-    def get_default(self, default_ds: xr.Dataset) -> float | np.ndarray | list[np.ndarray] :
+    def get_default(
+        self, default_ds: xr.Dataset
+    ) -> float | np.ndarray | list[np.ndarray]:
         return default_ds[self.spec.name].values
 
     def _write_at_index(
@@ -355,13 +358,13 @@ class DefaultParameter(Parameter, param_type="default"):
         arr = ds[self.spec.name].values.copy()
         arr[index.index] = _as_scalar(value, self.spec.name)
         ds[self.spec.name].values = arr
-        
+
     def _write_full(
-            self,
-            ds: xr.Dataset,
-            default_ds: xr.Dataset,
-            value: float | np.ndarray | list[np.ndarray],
-            fixed_indices: dict[str, list[int]]
+        self,
+        ds: xr.Dataset,
+        default_ds: xr.Dataset,
+        value: float | np.ndarray | list[np.ndarray],
+        fixed_indices: dict[str, list[int]],
     ):
         arr = ds[self.spec.name].values.copy()
         fixed = fixed_indices.get(self.free_dims[0], []) if self.free_dims else []
@@ -409,7 +412,7 @@ class SlicedParameter(Parameter, param_type="sliced"):
         index: DimIndex,
         value: float | np.ndarray | list[np.ndarray],
     ):
-        
+
         base_param_name = self.spec.base_params[0]
         arr = ds[base_param_name].values.copy()
         da_dims = list(ds[base_param_name].dims)
@@ -417,13 +420,13 @@ class SlicedParameter(Parameter, param_type="sliced"):
         idx[da_dims.index(index.dim)] = index.index
         arr[tuple(idx)] = _as_scalar(value, base_param_name)
         ds[base_param_name].values = arr
-        
+
     def _slice_index_tuple(self, arr: np.ndarray, da_dims: list[str]) -> list:
         """Build an index tuple pointing at the configured slice."""
         idx = [slice(None)] * arr.ndim
         idx[da_dims.index(self.spec.slice_dim)] = self.spec.slice_index
         return idx
-                
+
     def _write_full(
         self,
         ds: xr.Dataset,
@@ -436,20 +439,22 @@ class SlicedParameter(Parameter, param_type="sliced"):
         da_dims = list(ds[base_param_name].dims)
         idx = self._slice_index_tuple(arr, da_dims)
         fixed = fixed_indices.get(self.free_dims[0], []) if self.free_dims else []
-        slice_arr = _broadcast_to_array(arr[tuple(idx)].copy(), value, fixed, base_param_name)
+        slice_arr = _broadcast_to_array(
+            arr[tuple(idx)].copy(), value, fixed, base_param_name
+        )
         arr[tuple(idx)] = slice_arr
         ds[base_param_name].values = arr
-      
+
+
 class ScaleFromRootParameter(Parameter, param_type="scale_from_root"):
     """Parameter whose value is root + delta.
 
-
-    .. warning::
-        **Write-order dependency.** ``set_value`` reads the current value of
-        ``ds[root_param]`` and expects it to have already been written during
-        this sampling step.  Callers (e.g. the ensemble driver) **must** write
-        root parameters before any ``ScaleFromRootParameter`` that depends on
-        them.  Violating this order produces silently incorrect values rather
+    WARNING:
+        **Write-order dependency.** set_value reads the current value of
+        ds[root_param] and expects it to have already been written during
+        this sampling step. Callers (e.g. the ensemble driver) **must** write
+        root parameters before any ScaleFromRootParameter that depends on
+        them. Violating this order produces silently incorrect values rather
         than an error.
     """
 
@@ -508,16 +513,14 @@ class ScaleFromRootParameter(Parameter, param_type="scale_from_root"):
         root_arr = ds[self.spec.root_param].values
         default_arr = default_ds[base_param_name].values
         fixed = fixed_indices.get(self.free_dims[0], []) if self.free_dims else []
- 
-        if np.ndim(value) == 0:
-            new_arr = _broadcast_to_array(root_arr, value, [], base_param_name)
-        else:
-            new_arr = root_arr + np.asarray(value)
- 
+
+        new_arr = root_arr + np.asarray(value)
+
         if fixed:
             new_arr[fixed] = default_arr[fixed]
- 
+
         ds[base_param_name].values = new_arr
+
 
 class JointParameter(Parameter, param_type="joint"):
     """Parameter which stands for multiple connected parameters (e.g. posterior draws).
@@ -543,11 +546,9 @@ class JointParameter(Parameter, param_type="joint"):
 
     def get_default(self, default_ds: xr.Dataset) -> list[np.ndarray]:
         return [default_ds[p].values for p in self.spec.base_params]
-    
-    
+
     def _coerce_value_seq(
-        self,
-        value: float | np.ndarray | list[np.ndarray]
+        self, value: float | np.ndarray | list[np.ndarray]
     ) -> list[np.ndarray]:
         """Validate and return value as a list aligned with base_params
 
@@ -596,7 +597,7 @@ class JointParameter(Parameter, param_type="joint"):
             arr = ds[parameter].values.copy()
             arr[index.index] = _as_scalar(val, parameter)
             ds[parameter].values = arr
-            
+
     def _write_full(
         self,
         ds: xr.Dataset,
@@ -683,4 +684,4 @@ def _as_scalar(value: float | np.ndarray, name: str) -> float:
             f"Parameter '{name}': expected a scalar value but got an "
             f"array of shape {arr.shape}. Pass a scalar or expand the spec."
         )
-    return float(arr)
+    return float(arr.item())
