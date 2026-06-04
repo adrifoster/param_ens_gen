@@ -91,10 +91,18 @@ class ParamEnsemble(ABC):
         config: EnsembleConfig,
     ):
 
+        # read in the parameter metadata
         main, pft_sheets = read_param_list(config.param_dir)
 
         # subset to only a list of parameters if supplied
         if config.param_list is not None:
+            missing = set(config.param_list) - set(main.parameter_name)
+            if missing:
+                raise ValueError(
+                    f"param_list contains parameters not found in main.csv: "
+                    f"{sorted(missing)}. "
+                    f"Available parameters: {sorted(main.parameter_name)}"
+                )
             main = main[main.parameter_name.isin(config.param_list)].copy()
 
         # create output directory if it doesn't exit yet
@@ -103,9 +111,18 @@ class ParamEnsemble(ABC):
 
         # set attributes
         self.file_prefix = config.file_prefix
+        
+        if not config.default_param_file.exists():
+            raise FileNotFoundError(
+                f"Default parameter file '{config.default_param_file}' does not exist."
+            )
         self.default_ds = xr.open_dataset(config.default_param_file)
 
         if config.posterior_sources:
+            if not config.posterior_sources.exists():
+                raise FileNotFoundError(
+                    f"Posterior sources file '{config.posterior_sources}' does not exist."
+                    )
             with open(config.posterior_sources, "r", encoding="utf-8") as f:
                 posterior_config = yaml.safe_load(f)
 

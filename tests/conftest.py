@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 import pytest
+import yaml
 from pathlib import Path
 
 from param_ens_gen.posterior_source import PosteriorSource
@@ -555,7 +556,7 @@ def ensemble_param_dir(tmp_path) -> Path:
                 "root_param": None,
                 "base_params": "",
             },
-                        {
+            {
                 "parameter_name": "fates_leaf_vcmax25top",
                 "long_name": "maximum carboxylation rate of Rub. at 25C, canopy top",
                 "category": "stomatal",
@@ -571,6 +572,70 @@ def ensemble_param_dir(tmp_path) -> Path:
                 "root_param": None,
                 "base_params": "fates_leaf_vcmax25top",
             },
+            {
+                "parameter_name": "fates_canopy_closure_thresh",
+                "long_name": "tree canopy coverage at which crown area allometry changes from savanna to forest value",
+                "category": "biogeochemistry",
+                "subcategory": "vegetation dynamics",
+                "units": "1/yr",
+                "coord": "[]",
+                "param_type": "default",
+                "strategy": "uniform",
+                "param_min": "0.7",
+                "param_max": "0.1",
+                "slice_dim": None,
+                "slice_index": None,
+                "root_param": None,
+                "base_params": None,
+            },
+            {
+                "parameter_name": "smpsc_delta",
+                "long_name": "Soil water potential at full stomatal closing (delta)",
+                "category": "stomatal",
+                "subcategory": "vegetation water",
+                "units": "mm",
+                "coord": "['fates_pft']",
+                "param_type": "scale_from_root",
+                "strategy": "uniform",
+                "param_min": "-600000",
+                "param_max": "-20000",
+                "slice_dim": None,
+                "slice_index": None,
+                "root_param": "fates_nonhydro_smpso",
+                "base_params": "fates_nonhydro_smpsc",
+            },
+            {
+                "parameter_name": "fates_nonhydro_smpso",
+                "long_name": "Soil water potential at full stomatal opening",
+                "category": "stomatal",
+                "subcategory": "vegetation water",
+                "units": "mm",
+                "coord": "['fates_pft']",
+                "param_type": "default",
+                "strategy": "uniform",
+                "param_min": "20percent",
+                "param_max": "20percent",
+                "slice_dim": None,
+                "slice_index": None,
+                "root_param": None,
+                "base_params": None,
+            },
+            {
+                "parameter_name": "fates_leafn_vert_scaler",
+                "long_name": "Coefficient one for decrease in leaf nitrogen through the canopy, from Lloyd et al. 2010",
+                "category": "stomatal",
+                "subcategory": "photosynthesis",
+                "units": "unitless",
+                "coord": "['fates_pft']",
+                "param_type": "joint",
+                "strategy": "posterior",
+                "param_min": "",
+                "param_max": "",
+                "slice_dim": None,
+                "slice_index": None,
+                "root_param": None,
+                "base_params": "['fates_leafn_vert_scaler_coeff1', 'fates_leafn_vert_scaler_coeff2']",
+            },
         ]
     ).to_csv(tmp_path / "main.csv", index=False)
     return tmp_path
@@ -581,6 +646,29 @@ def default_param_file(tmp_path, default_ds) -> Path:
     """Write default_ds to a temp netCDF file and return the path."""
     path = tmp_path / "default.nc"
     default_ds.to_netcdf(path)
+    return path
+
+
+@pytest.fixture
+def posterior_config_file(tmp_path, posterior_file) -> Path:
+    """A minimal posterior config YAML file pointing at posterior_file."""
+    config = {
+        "fates_leafn_vert_scaler": {
+            "parameters": [
+                "fates_leafn_vert_scaler_coeff1",
+                "fates_leafn_vert_scaler_coeff2",
+            ],
+            "files": [
+                {
+                    "path": str(posterior_file),
+                    "array_indices": "all",
+                }
+            ],
+        }
+    }
+    path = tmp_path / "posterior_sources.yaml"
+    with open(path, "w", encoding="utf8") as f:
+        yaml.dump(config, f)
     return path
 
 
