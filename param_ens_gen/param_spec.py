@@ -138,10 +138,12 @@ class ParamSpec:  # pylint: disable=too-many-instance-attributes
 
 
 def _is_nan(value: float) -> bool:
-    """Return True if *value* is a float NaN."""
+    """Return True if value is a float NaN."""
     try:
         return math.isnan(value)
     except TypeError:
+        # this should be caught by the calling method but 
+        # putting here as a failsafe
         return False
 
 
@@ -164,16 +166,24 @@ def _parse_dims(value: str | None) -> list[str]:
             "coord cell is missing (NaN/None). "
             "Use an explicit empty list '[]' for scalar parameters."
         )
-    if not isinstance(value, str) or not value.strip():
-        return []
+    if not isinstance(value, str):
+        raise ValueError(
+            f"coord cell has unexpected type {type(value).__name__!r}: {value!r}. "
+            "Expected a string like \"['fates_pft']\" or '[]' for scalars."
+        )
+    if not value.strip():
+        raise ValueError(
+            "coord cell is blank. "
+            "Use an explicit empty list '[]' for scalar parameters."
+        )
     try:
         result = ast.literal_eval(value.strip())
-        if isinstance(result, list):
+        if isinstance(result, (list, tuple)):
             return [str(d) for d in result]
         # bare non-list literal (e.g. a bare string without brackets)
         return [str(result)]
     except (ValueError, SyntaxError):
-        return [value.strip().strip("[]'\"")]
+        return [s.strip().strip("'\"") for s in value.strip().strip("[]").split(",") if s.strip()]
 
 
 def _parse_list(value: str | float | None) -> list[str]:
@@ -190,12 +200,17 @@ def _parse_list(value: str | float | None) -> list[str]:
     """
     if value is None or (isinstance(value, float) and _is_nan(value)):
         return []
-    if not isinstance(value, str) or not value.strip():
+    if not isinstance(value, str):
+        raise ValueError(
+            f"list cell has unexpected type {type(value).__name__!r}: {value!r}. "
+            "Expected a string or blank cell."
+        )
+    if not value.strip():
         return []
     stripped = value.strip()
     try:
         result = ast.literal_eval(stripped)
-        if isinstance(result, list):
+        if isinstance(result, (list, tuple)):
             return [str(r).strip() for r in result]
         # bare non-list literal (e.g. a single quoted string or integer)
         return [str(result).strip()]
@@ -215,10 +230,12 @@ def _parse_optional_int(value: str | None) -> Optional[int]:
     """
     if value is None or (isinstance(value, float) and _is_nan(value)):
         return None
+    if isinstance(value, str) and not value.strip():
+        return None
     try:
         return int(value)
     except (TypeError, ValueError):
-        return None
+        raise ValueError(f"Expected an integer or blank for slice_index, got: {value!r}")
 
 
 def _parse_optional_str(value: str | None) -> Optional[str]:

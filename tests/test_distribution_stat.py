@@ -214,6 +214,22 @@ def test_percent_stat_resolve_none_default_raises():
     stat = PercentStat(percent=50.0, stat_type="min")
     with pytest.raises(ValueError, match="default_value"):
         stat.resolve(default_value=None)
+        
+
+def test_percent_stat_resolve_unknown_stat_raises():
+    """PercentStat.resolve() raises AssertionError with an unknown."""
+    stat = PercentStat(percent=50.0, stat_type="min")
+    stat.stat_type='unknown_stat'
+    with pytest.raises(AssertionError, match="unknown_stat"):
+        stat.resolve(default_value=5.0)
+        
+
+def test_percent_stat_resolve_mean_raises():
+    """PercentStat.resolve() raises AssertionError with an unknown."""
+    stat = PercentStat(percent=50.0, stat_type="min")
+    stat.stat_type='mean'
+    with pytest.raises(AssertionError, match="mean"):
+        stat.resolve(default_value=5.0)
 
 
 # ===========================================================================
@@ -251,7 +267,33 @@ def test_pft_stat_from_sheet_non_numeric_raises():
     )
     with pytest.raises(ValueError, match="fixed numbers"):
         PFTStat.from_sheet(bad_sheet, "param_min")
-
+        
+        
+def test_pft_stat_from_sheet_missing_index_raises():
+    """PFTStat.from_sheet() raises ValueError for missing pft_index."""
+    bad_sheet = pd.DataFrame(
+        {
+            "pft_name": ["white_spruce", "black_spruce", "deciduous"],
+            "param_min": [0.001, 0.004, 0.008],
+            "param_max": [0.040, 0.035, 0.060],
+        }
+    )
+    with pytest.raises(ValueError, match="PFT sheet"):
+        PFTStat.from_sheet(bad_sheet, "param_min")
+        
+        
+def test_pft_stat_from_sheet_missing_column_raises():
+    """PFTStat.from_sheet() raises ValueError for missing column."""
+    bad_sheet = pd.DataFrame(
+        {
+            "pft_index": [1, 2, 3],
+            "pft_name": ["white_spruce", "black_spruce", "deciduous"],
+            "param_max": [0.040, 0.035, 0.060],
+        }
+    )
+    with pytest.raises(ValueError, match="PFT sheet"):
+        PFTStat.from_sheet(bad_sheet, "param_min")
+        
 
 def test_pft_stat_resolve_returns_values(pft_sheet):
     """PFTStat.resolve() returns the stored values array."""
