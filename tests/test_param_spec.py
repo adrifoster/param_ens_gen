@@ -72,6 +72,7 @@ def test_from_row_metadata_fields(default_row):
     assert spec.subcategory == "photosynthesis"
     assert spec.units == "m^2/gC"
 
+
 @pytest.mark.parametrize("value", [None, float("nan")])
 def test_from_row_missing_coord_raises(default_row, value):
     """from_row raises ValueError when the coord cell is NaN (blank in spreadsheet).
@@ -83,7 +84,8 @@ def test_from_row_missing_coord_raises(default_row, value):
     row["coord"] = value
     with pytest.raises(ValueError, match="coord cell is missing"):
         ParamSpec.from_row(row)
-        
+
+
 @pytest.mark.parametrize(
     "missing_cols",
     list(_REQUIRED_COLUMNS),
@@ -105,6 +107,7 @@ def test_from_row_blank_column_raises(default_row, blank_col, blank_value):
     with pytest.raises(ValueError, match="Row has blank values in required columns"):
         ParamSpec.from_row(row)
 
+
 def test_from_row_explicit_empty_coord_is_scalar(default_row):
     """from_row produces an empty dims list when coord is explicitly '[]'."""
     row = default_row.copy()
@@ -125,13 +128,16 @@ def test_from_row_base_params_parsed_from_plain_string(scale_from_root_row):
     assert spec.base_params == ["fates_nonhydro_smpsc"]
 
 
-@pytest.mark.parametrize("value, expected_slice_index", [
-    (None, None),
-    (float("nan"), None),   # blank numeric cell from pandas
-    ("3", 3),
-    ("0", 0),
-    ("", None),
-])
+@pytest.mark.parametrize(
+    "value, expected_slice_index",
+    [
+        (None, None),
+        (float("nan"), None),  # blank numeric cell from pandas
+        ("3", 3),
+        ("0", 0),
+        ("", None),
+    ],
+)
 def test_from_row_slice_index_valid(sliced_row, value, expected_slice_index):
     row = sliced_row.copy()
     row["slice_index"] = value
@@ -146,54 +152,65 @@ def test_from_row_slice_index_raises(sliced_row, value):
     with pytest.raises(ValueError, match="slice_index"):
         ParamSpec.from_row(row)
 
-@pytest.mark.parametrize("value, match", [
-    (None,         "coord cell is missing"),
-    (float("nan"), "coord cell is missing"),
-    (42,           "coord cell has unexpected type"),
-    ([],           "coord cell has unexpected type"),
-    ("   ",        "coord cell is blank"),
-])
+
+@pytest.mark.parametrize(
+    "value, match",
+    [
+        (None, "coord cell is missing"),
+        (float("nan"), "coord cell is missing"),
+        (42, "coord cell has unexpected type"),
+        ([], "coord cell has unexpected type"),
+        ("   ", "coord cell is blank"),
+    ],
+)
 def test_parse_dims_raises(value, match):
     with pytest.raises(ValueError, match=match):
         _parse_dims(value)
 
-@pytest.mark.parametrize("value, expected", [
-    ("[]",                  []),
-    ("['fates_pft']",       ["fates_pft"]),
-    ("'fates_pft'",       ["fates_pft"]),
-    ("fates_pft",       ["fates_pft"]),
-    ("'fates_pft', 'pft'", ["fates_pft", "pft"]),
-    ("fates_pft, pft", ["fates_pft", "pft"]),
-    ("['fates_pft', 'pft']", ["fates_pft", "pft"]),
-])
+
+@pytest.mark.parametrize(
+    "value, expected",
+    [
+        ("[]", []),
+        ("['fates_pft']", ["fates_pft"]),
+        ("'fates_pft'", ["fates_pft"]),
+        ("fates_pft", ["fates_pft"]),
+        ("'fates_pft', 'pft'", ["fates_pft", "pft"]),
+        ("fates_pft, pft", ["fates_pft", "pft"]),
+        ("['fates_pft', 'pft']", ["fates_pft", "pft"]),
+    ],
+)
 def test_parse_dims_valid(value, expected):
     assert _parse_dims(value) == expected
 
 
-@pytest.mark.parametrize("value, expected_base_params", [
-    (None, []),
-    (float("nan"), []),   # blank numeric cell from pandas
-    ("[]", []),
-    ("['a', 'b']", ["a", "b"]),
-    ("'a'", ["a"]),
-    ("'a', 'b'", ["a", "b"]),
-    ("a, b, c", ["a", "b", "c"]),
-    ("fates_pft", ["fates_pft"]),
-])
+@pytest.mark.parametrize(
+    "value, expected_base_params",
+    [
+        (None, []),
+        (float("nan"), []),  # blank numeric cell from pandas
+        ("[]", []),
+        ("['a', 'b']", ["a", "b"]),
+        ("'a'", ["a"]),
+        ("'a', 'b'", ["a", "b"]),
+        ("a, b, c", ["a", "b", "c"]),
+        ("fates_pft", ["fates_pft"]),
+    ],
+)
 def test_from_row_parse_list(sliced_row, value, expected_base_params):
     row = sliced_row.copy()
     row["base_params"] = value
     result = ParamSpec.from_row(row)
     assert result.base_params == expected_base_params
-    
-    
+
+
 @pytest.mark.parametrize("value", [42, [], True])
 def test_parse_list_bad_type_raises(sliced_row, value):
     row = sliced_row.copy()
     row["base_params"] = value
     with pytest.raises(ValueError, match="unexpected type"):
         ParamSpec.from_row(row)
-    
+
 
 # ===========================================================================
 # ParamSpec.__post_init__: field-level invariants

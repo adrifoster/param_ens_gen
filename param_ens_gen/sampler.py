@@ -338,7 +338,7 @@ class PosteriorSampler(Sampler, sampler_type="posterior"):
                 result[k][:] = unscaled
         else:
             for source in self.sources:
-                row = source.unscale(0.01)
+                row = source.unscale(value)
                 indices = (
                     range(n_indices) if source.is_broadcast else source.array_indices
                 )

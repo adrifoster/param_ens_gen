@@ -227,6 +227,17 @@ def empty_posterior_file(tmp_path) -> Path:
 
 
 @pytest.fixture
+def single_row_posterior(tmp_path):
+    file = tmp_path / "posterior.txt"
+    file.write_text("leaf_cn\n25.0\n")
+    return PosteriorSource(
+        path=file,
+        array_indices="all",
+        parameters=["leaf_cn"],
+    )
+
+
+@pytest.fixture
 def posterior_source(posterior_file) -> PosteriorSource:
     """A PosteriorSource pointing at posterior_file, not yet loaded.
 
@@ -475,3 +486,44 @@ def joint_param(joint_param_row, default_ds, posterior_config) -> JointParameter
     return JointParameter(
         joint_param_row, default_ds, posterior_config=posterior_config
     )
+
+
+# =============================================================================
+# EnsembleConfig fixtures
+# =============================================================================
+
+
+@pytest.fixture
+def base_paths(tmp_path):
+    return {
+        "param_dir": tmp_path,
+        "ensemble_dir": tmp_path / "ensemble",
+        "file_prefix": "test_ensemble",
+        "default_param_file": tmp_path / "default.nc",
+    }
+
+
+# =============================================================================
+# param_dir fixtures
+# =============================================================================
+
+
+@pytest.fixture
+def param_dir(tmp_path) -> Path:
+    main = pd.DataFrame(
+        {
+            "parameter_name": ["fates_leaf_slatop"],
+            "param_type": ["default"],
+        }
+    )
+    main.to_csv(tmp_path / "main.csv", index=False)
+
+    pft = pd.DataFrame(
+        {
+            "pft_index": [1, 2, 3],
+            "param_min": [0.005, 0.004, 0.008],
+            "param_max": [0.040, 0.035, 0.060],
+        }
+    )
+    pft.to_csv(tmp_path / "fates_leaf_slatop.csv", index=False)
+    return tmp_path

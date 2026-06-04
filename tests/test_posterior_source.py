@@ -318,3 +318,8 @@ def test_unscale_does_not_reload_on_second_call(posterior_source, mocker):
     posterior_source.unscale(0.5)
     posterior_source.unscale(0.5)
     assert spy.call_count == 1
+
+
+def test_unscale_single_row_returns_one(single_row_posterior):
+    """A single-row posterior always returns 1.0 regardless of input value."""
+    assert single_row_posterior.unscale(25.0) == 1.0

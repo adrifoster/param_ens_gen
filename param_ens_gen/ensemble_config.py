@@ -17,8 +17,8 @@ class EnsembleConfig:
 
     Attributes
     ----------
-    param_data_file : Path
-        Path to the Excel spreadsheet defining calibratable parameters.
+    param_dir : Path
+        Path to the directory with the parameter metadata datafiles
     ensemble_dir : Path
         Directory where ensemble member files will be written.
     file_prefix : str
@@ -41,7 +41,7 @@ class EnsembleConfig:
         parameters are expected.
     """
 
-    param_data_file: Path
+    param_dir: Path
     ensemble_dir: Path
     file_prefix: str
     default_param_file: Path
@@ -50,7 +50,7 @@ class EnsembleConfig:
     posterior_sources: Optional[Path] = None
 
     def __post_init__(self):
-        self.param_data_file = Path(self.param_data_file)
+        self.param_dir = Path(self.param_dir)
         self.ensemble_dir = Path(self.ensemble_dir)
         self.default_param_file = Path(self.default_param_file)
         if self.posterior_sources is not None:

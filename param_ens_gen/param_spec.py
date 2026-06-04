@@ -142,7 +142,7 @@ def _is_nan(value: float) -> bool:
     try:
         return math.isnan(value)
     except TypeError:
-        # this should be caught by the calling method but 
+        # this should be caught by the calling method but
         # putting here as a failsafe
         return False
 
@@ -183,7 +183,11 @@ def _parse_dims(value: str | None) -> list[str]:
         # bare non-list literal (e.g. a bare string without brackets)
         return [str(result)]
     except (ValueError, SyntaxError):
-        return [s.strip().strip("'\"") for s in value.strip().strip("[]").split(",") if s.strip()]
+        return [
+            s.strip().strip("'\"")
+            for s in value.strip().strip("[]").split(",")
+            if s.strip()
+        ]
 
 
 def _parse_list(value: str | float | None) -> list[str]:
@@ -235,7 +239,9 @@ def _parse_optional_int(value: str | None) -> Optional[int]:
     try:
         return int(value)
     except (TypeError, ValueError):
-        raise ValueError(f"Expected an integer or blank for slice_index, got: {value!r}")
+        raise ValueError(
+            f"Expected an integer or blank for slice_index, got: {value!r}"
+        )
 
 
 def _parse_optional_str(value: str | None) -> Optional[str]:

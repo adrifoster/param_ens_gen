@@ -690,6 +690,24 @@ def test_sliced_param_validate_specs_missing_slice_index_raises(
         Parameter.from_row(default_row, default_ds)
 
 
+def test_sliced_param_validate_specs_missing_base_params_raises(
+    default_row, default_ds
+):
+    """_validate_specs() raises if base_params is missing"""
+
+    default_row["parameter_name"] = "fates_leaf_vcmax25top"
+    default_row["parameter_name"] = "['fates_leafage_class', 'fates_pft']"
+    default_row["param_type"] = "sliced"
+    default_row["param_min"] = "20.0"
+    default_row["param_max"] = "90.0"
+    default_row["slice_dim"] = "fates_leafage_class"
+    default_row["slice_index"] = "0"
+    default_row["base_params"] = None
+
+    with pytest.raises(ValueError, match="base_params"):
+        Parameter.from_row(default_row, default_ds)
+
+
 def test_sliced_param_validate_multiple_base_params_raises(default_row, default_ds):
     """_validate_specs() raises for multiple base_params"""
 
@@ -848,7 +866,7 @@ def test_scale_from_root_missing_root_param_raises(default_row, default_ds):
         Parameter.from_row(default_row, default_ds)
 
 
-def test_scale_from_root__missing_base_param_raises(default_row, default_ds):
+def test_scale_from_root_missing_base_param_raises(default_row, default_ds):
     """ScaleFromRootParam raises if missing the base parameter"""
     default_row["parameter_name"] = "smpsc_delta"
     default_row["coord"] = "['fates_pft']"
@@ -859,6 +877,21 @@ def test_scale_from_root__missing_base_param_raises(default_row, default_ds):
     default_row["base_params"] = ""
 
     with pytest.raises(ValueError, match="base_param"):
+        Parameter.from_row(default_row, default_ds)
+
+
+def test_scale_from_root_validate_multiple_base_params_raises(default_row, default_ds):
+    """ScaleFromRootParam raises for multiple base_params"""
+
+    default_row["parameter_name"] = "fates_leaf_vcmax25top"
+    default_row["parameter_name"] = "['fates_leafage_class', 'fates_pft']"
+    default_row["param_type"] = "scale_from_root"
+    default_row["param_min"] = "20.0"
+    default_row["param_max"] = "90.0"
+    default_row["root_param"] = "fates_nonhydro_smpso"
+    default_row["base_params"] = "['fates_leaf_vcmax25top', 'fates_leaf_slatop']"
+
+    with pytest.raises(ValueError, match="Too many base_params"):
         Parameter.from_row(default_row, default_ds)
 
 
@@ -1156,3 +1189,67 @@ def test_joint_set_value_default_ds_not_mutated(joint_param, working_ds, default
     np.testing.assert_array_equal(
         default_ds["fates_leafn_vert_scaler_coeff2"].values, original_c2
     )
+
+
+def test_joint_parameter_coerce_non_iterable_raises(
+    joint_param, working_ds, default_ds
+):
+    """set_value raises TypeError if value is a non-iterable scalar."""
+    with pytest.raises(TypeError, match="non-iterable"):
+        joint_param.set_value(working_ds, default_ds, 5.0)
+
+    with pytest.raises(TypeError, match="non-iterable"):
+        joint_param.set_value(working_ds, default_ds, np.float64(5.0))
+
+
+# =============================================================================
+# Sample
+# =============================================================================
+
+
+def test_default_parameter_sample(default_param, default_ds):
+    """sample() returns a value with the expected value."""
+    result = default_param.sample(0.5, default_ds)
+    assert result == pytest.approx(0.0275)
+
+
+def test_default_parameter_sample_bounds(default_param, default_ds):
+    """sample() at 0.0 and 1.0 returns min and max."""
+    assert default_param.sample(0.0, default_ds) == pytest.approx(0.005)
+    assert default_param.sample(1.0, default_ds) == pytest.approx(0.05)
+
+
+def test_scalar_parameter_sample(scalar_param, default_ds):
+    """sample() returns a value with the expected value."""
+    result = scalar_param.sample(0.5, default_ds)
+    assert result == pytest.approx(0.8)
+
+
+def test_scalar_parameter_sample_bounds(scalar_param, default_ds):
+    """sample() at 0.0 and 1.0 returns min and max."""
+    assert scalar_param.sample(0.0, default_ds) == pytest.approx(0.7)
+    assert scalar_param.sample(1.0, default_ds) == pytest.approx(0.9)
+
+
+def test_percent_parameter_sample(percent_row, default_ds):
+    """sample() returns a value with the expected value."""
+    param = Parameter.from_row(percent_row, default_ds)
+    result = param.sample(0.5, default_ds)
+    expected = default_ds["fates_leaf_vcmax25top"].values
+    np.testing.assert_allclose(result, expected)
+
+
+def test_joint_parameter_sample(joint_param, default_ds):
+    """sample() returns a list of arrays, one per base_param."""
+    result = joint_param.sample(0.5, default_ds)
+
+    # should be a list with one entry per base_param
+    assert len(result) == 2
+
+    # each entry should be an array with one value per PFT
+    assert result[0].shape == (3,)
+    assert result[1].shape == (3,)
+
+    # values should be within the posterior range
+    assert np.all(result[0] >= 0.0) and np.all(result[0] <= 0.95)  # coeff1 range
+    assert np.all(result[1] >= 10.0) and np.all(result[1] <= 19.5)  # coeff2 range

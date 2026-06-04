@@ -438,3 +438,62 @@ def test_posterior_sampler_no_index_match_raises(joint_param_row, posterior_file
     sampler = PosteriorSampler(joint_param_row, posterior_config=config)
     with pytest.raises(ValueError, match="No source found"):
         sampler.sample(0.5, SampleContext(array_index=99))
+
+
+def test_posterior_sampler_normalize_for_index(tmp_path):
+    """normalize routes to _unscale_for_index when array_index is set."""
+    f = tmp_path / "posterior.txt"
+    f.write_text("leaf_cn\n10.0\n20.0\n30.0\n")
+
+    posterior_config = {
+        "parameters": ["leaf_cn"],
+        "files": [{"path": str(f), "array_indices": "all"}],
+    }
+    row = pd.Series({"parameter_name": "leaf_cn", "strategy": "posterior"})
+    sampler = PosteriorSampler(row, posterior_config=posterior_config)
+
+    context = SampleContext(array_index=0)
+    result = sampler.normalize(20.0, context)
+    assert 0.0 <= result <= 1.0
+
+
+def test_posterior_sampler_normalize_broadcast(tmp_path):
+    """normalize routes to _unscale_broadcast when array_index is None."""
+    f = tmp_path / "posterior.txt"
+    f.write_text("leaf_cn\n10.0\n20.0\n30.0\n")
+
+    posterior_config = {
+        "parameters": ["leaf_cn"],
+        "files": [{"path": str(f), "array_indices": "all"}],
+    }
+    row = pd.Series({"parameter_name": "leaf_cn", "strategy": "posterior"})
+    sampler = PosteriorSampler(row, posterior_config=posterior_config)
+
+    context = SampleContext(array_index=None, n_indices=3)
+    result = sampler.normalize(20.0, context)
+    assert len(result) == 1  # one entry per parameter
+    assert len(result[0]) == 3  # one value per index
+
+
+def test_unscale_broadcast_multiple_sources(tmp_path):
+    """_unscale_broadcast else branch: multiple sources with specific array indices."""
+    f0 = tmp_path / "posterior_0.txt"
+    f1 = tmp_path / "posterior_1.txt"
+    f0.write_text("leaf_cn\n10.0\n20.0\n30.0\n")
+    f1.write_text("leaf_cn\n10.0\n20.0\n30.0\n")
+
+    posterior_config = {
+        "parameters": ["leaf_cn"],
+        "files": [
+            {"path": str(f0), "array_indices": [0, 1]},
+            {"path": str(f1), "array_indices": [2]},
+        ],
+    }
+    row = pd.Series({"parameter_name": "leaf_cn", "strategy": "posterior"})
+    sampler = PosteriorSampler(row, posterior_config=posterior_config)
+
+    context = SampleContext(array_index=None, n_indices=3)
+    result = sampler.normalize(20.0, context)
+    assert len(result) == 1  # one entry per parameter
+    assert len(result[0]) == 3  # one value per index
+    assert all(0.0 <= v <= 1.0 for v in result[0])
