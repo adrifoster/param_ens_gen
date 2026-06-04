@@ -13,6 +13,11 @@ from param_ens_gen.parameter import (
     ScaleFromRootParameter,
     SlicedParameter,
 )
+from param_ens_gen.ensemble_config import LatinHypercubeConfig, OneAtATimeConfig
+from param_ens_gen.param_ensemble import (
+    LatinHypercubeEnsemble,
+    OneAtATimeParameterEnsemble,
+)
 
 N_PFTS = 3
 N_LEAFAGE = 2
@@ -527,3 +532,81 @@ def param_dir(tmp_path) -> Path:
     )
     pft.to_csv(tmp_path / "fates_leaf_slatop.csv", index=False)
     return tmp_path
+
+
+@pytest.fixture
+def ensemble_param_dir(tmp_path) -> Path:
+    """A param_dir with a complete valid main.csv for ensemble tests."""
+    pd.DataFrame(
+        [
+            {
+                "parameter_name": "fates_leaf_slatop",
+                "long_name": "SLA at top of canopy",
+                "category": "stomatal",
+                "subcategory": "photosynthesis",
+                "units": "m^2/gC",
+                "coord": "['fates_pft']",
+                "param_type": "default",
+                "strategy": "uniform",
+                "param_min": "0.005",
+                "param_max": "0.05",
+                "slice_dim": None,
+                "slice_index": None,
+                "root_param": None,
+                "base_params": "",
+            },
+                        {
+                "parameter_name": "fates_leaf_vcmax25top",
+                "long_name": "maximum carboxylation rate of Rub. at 25C, canopy top",
+                "category": "stomatal",
+                "subcategory": "photosynthesis",
+                "units": "umol CO2/m^2/s",
+                "coord": "['fates_leafage_class', 'fates_pft']",
+                "param_type": "sliced",
+                "strategy": "uniform",
+                "param_min": "20.0",
+                "param_max": "90.0",
+                "slice_dim": "fates_leafage_class",
+                "slice_index": 0,
+                "root_param": None,
+                "base_params": "fates_leaf_vcmax25top",
+            },
+        ]
+    ).to_csv(tmp_path / "main.csv", index=False)
+    return tmp_path
+
+
+@pytest.fixture
+def default_param_file(tmp_path, default_ds) -> Path:
+    """Write default_ds to a temp netCDF file and return the path."""
+    path = tmp_path / "default.nc"
+    default_ds.to_netcdf(path)
+    return path
+
+
+# =============================================================================
+# ParamEnsemble fixtures
+# =============================================================================
+
+
+@pytest.fixture
+def lh_ensemble(ensemble_param_dir, default_param_file, tmp_path):
+    config = LatinHypercubeConfig(
+        param_dir=ensemble_param_dir,
+        ensemble_dir=tmp_path / "ensemble",
+        file_prefix="test",
+        default_param_file=default_param_file,
+        ensemble_members=5,
+    )
+    return LatinHypercubeEnsemble(config)
+
+
+@pytest.fixture
+def oat_ensemble(ensemble_param_dir, default_param_file, tmp_path):
+    config = OneAtATimeConfig(
+        param_dir=ensemble_param_dir,
+        ensemble_dir=tmp_path / "ensemble",
+        file_prefix="test",
+        default_param_file=default_param_file,
+    )
+    return OneAtATimeParameterEnsemble(config)

@@ -76,7 +76,7 @@ class ParamEnsemble(ABC):
     fixed_indices: dict[str, list[int]] | None
         Mapping of dimension name to 0-based indices to hold at
         their default values across all ensemble members. For example,
-        ``{'fates_pft': [7, 8, 9]}`` fixes PFTs 8, 9, and 10 (0-based).
+        {'fates_pft': [7, 8, 9]} fixes PFTs 8, 9, and 10 (0-based).
         If None, all indices are free.
     """
 
@@ -91,7 +91,7 @@ class ParamEnsemble(ABC):
         config: EnsembleConfig,
     ):
 
-        main, pft_sheets = read_param_list(config.param_data_file)
+        main, pft_sheets = read_param_list(config.param_dir)
 
         # subset to only a list of parameters if supplied
         if config.param_list is not None:
@@ -141,8 +141,8 @@ class ParamEnsemble(ABC):
     ) -> ParamEnsemble:
         """Construct the correct ParamEnsemble subclass from an input configuration dict.
 
-        The dict must contain an ``'ensemble_type'`` key whose value matches
-        a registered subclass (e.g. ``'LatinHypercube'``). All other keys
+        The dict must contain an 'ensemble_type' key whose value matches
+        a registered subclass (e.g. 'LatinHypercube'). All other keys
         are passed to the corresponding config dataclass.
 
         Args:
@@ -161,7 +161,7 @@ class ParamEnsemble(ABC):
             }
         Raises:
             ValueError
-                If ``'ensemble_type'`` is missing or not a registered type.
+                If 'ensemble_type' is missing or not a registered type.
             TypeError
                 If the config dict contains keys not recognised by the config
                 dataclass (misspelled or unsupported options).
@@ -289,8 +289,8 @@ class LatinHypercubeEnsemble(ParamEnsemble, ensemble_type="LatinHypercube"):
         """Construct from a plain dict (ensemble_type already removed)
 
         Args:
-            config (dict): Must contain all required ``LatinHypercubeConfig`` fields.
-            Unrecognised keys raise ``TypeError``.
+            config (dict): Must contain all required LatinHypercubeConfig fields.
+            Unrecognised keys raise TypeError.
 
         Raises:
             TypeError: Uncrecogized or missing keys
@@ -433,8 +433,8 @@ class OneAtATimeParameterEnsemble(ParamEnsemble, ensemble_type="OAT"):
         """Construct from a plain dict (ensemble_type already removed)
 
         Args:
-            config (dict): Must contain all required ``OneAtATimeConfig`` fields.
-            Unrecognised keys raise ``TypeError``.
+            config (dict): Must contain all required OneAtATimeConfig fields.
+            Unrecognised keys raise TypeError.
 
         Raises:
             TypeError: Uncrecogized or missing keys
