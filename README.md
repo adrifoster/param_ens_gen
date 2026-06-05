@@ -247,9 +247,9 @@ fates_leafn_vert_scaler_coeff1 fates_leafn_vert_scaler_coeff2
 
 For each ensemble run, `param_ens_gen` writes:
 
-* **`{prefix}_000.nc`, `{prefix}_001.nc`, ...** — one NetCDF parameter file per ensemble member, each a modified copy of the default parameter file
-* **`{prefix}_key.csv`** — a table recording the normalized value (0–1) each parameter took in each member; for OAT ensembles, also includes a `direction` column (`minimum` or `maximum`)
-* **`{prefix}.txt`** — a plain text list of ensemble member names, one per line, for use in scripting
+* **`{prefix}_000.nc`, `{prefix}_001.nc`, ...**: one NetCDF parameter file per ensemble member, each a modified copy of the default parameter file
+* **`{prefix}_key.csv`**: a table recording the normalized value (0–1) each parameter took in each member; for OAT ensembles, also includes a `direction` column (`minimum` or `maximum`)
+* **`{prefix}.txt`**: a plain text list of ensemble member names, one per line, for use in scripting
 
 ## Parameter types
 
