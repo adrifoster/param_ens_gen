@@ -1,3 +1,5 @@
+"""Utility function for sorting Parameter list to resolve dependencies"""
+
 from __future__ import annotations
 
 from collections import defaultdict, deque
@@ -8,16 +10,16 @@ from .parameter import Parameter, ScaleFromRootParameter
 def sort_params(params: list[Parameter]) -> list[Parameter]:
     """Return params reordered so every root_param is written before its dependents.
 
-    Only ScaleFromRootParameters introduce ordering constraints. All other
+    So far, only ScaleFromRootParameters introduce ordering constraints. All other
     parameter types are treated as having no dependencies.
 
-     If a root_param is not present in the parameter list (i.e. it is not
-    being calibrated), no ordering constraint is added for it — the dataset
+    If a root_param is not present in the parameter list (i.e. it is not
+    being calibrated), no ordering constraint is added for it. The dataset
     value is assumed to be whatever was last written.
 
     Args:
         params (list[Parameter]): Unsorted parameter list, as constructed from the input
-        spreadsheet
+        file
 
     Raises:
         ValueError:  If a cycle is detected among ScaleFromRootParameter dependencies
@@ -26,21 +28,32 @@ def sort_params(params: list[Parameter]) -> list[Parameter]:
     Returns:
         list[Parameter]: Topologically sorted parameter list.
     """
-    name_to_param = {p.spec.name: p for p in params}
+    spec_name_to_param: dict[str, Parameter] = {p.spec.name: p for p in params}
+    
+    # map from dataset variable name to param that writes it
+    var_to_param: dict[str, Parameter] = {}
+    for p in params:
+        if p.spec.base_params:
+            for var in p.spec.base_params:
+                var_to_param[var] = p
+        else:
+            var_to_param[p.spec.name] = p
 
-    # Build adjacency list and in-degree count.
-    # Edge: root_param to dependent (root must come first)
+    # build adjacency list and in-degree count.
+    # edge: root_param to dependent (root must come first)
     dependents: dict[str, list[str]] = defaultdict(list)
     in_degree: dict[str, int] = {p.spec.name: 0 for p in params}
 
     for param in params:
         if isinstance(param, ScaleFromRootParameter):
             root = param.spec.root_param
-            if root in name_to_param:
-                dependents[root].append(param.spec.name)
-                in_degree[param.spec.name] += 1
-
-    # Kahn's algorithm — seed with all zero-in-degree nodes in original order
+            if root in var_to_param:
+                root_param_name = var_to_param[root].spec.name
+                if root_param_name != param.spec.name:
+                    dependents[root_param_name].append(param.spec.name)
+                    in_degree[param.spec.name] += 1
+                    
+    # Kahn's algorithm: seed with all zero-in-degree nodes in original order
     queue: deque[str] = deque(
         p.spec.name for p in params if in_degree[p.spec.name] == 0
     )
@@ -62,4 +75,4 @@ def sort_params(params: list[Parameter]) -> list[Parameter]:
             "dependents."
         )
 
-    return [name_to_param[name] for name in sorted_names]
+    return [spec_name_to_param[name] for name in sorted_names]

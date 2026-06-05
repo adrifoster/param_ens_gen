@@ -137,6 +137,45 @@ def scale_from_root_row() -> pd.Series:
         base_params="fates_nonhydro_smpsc",
     )
 
+@pytest.fixture
+def root_row() -> pd.Series:
+    """A valid row for a root parameter.
+
+    Returns:
+        pd.Series: spreadsheet row
+    """
+    return _base_row(
+        parameter_name="fates_nonhydro_smpso",
+        coord="['fates_pft']",
+        param_type="default",
+        param_min="-200000",
+        param_max="-10000",
+    )
+
+@pytest.fixture
+def mutually_dependent_rows() -> tuple[pd.Series, pd.Series]:
+    """Two mutually-dependent scale_from_root parameters"""
+    
+    row_a = _base_row(
+        parameter_name="param_a",
+        coord="['fates_pft']",
+        param_type="scale_from_root",
+        param_min="-600000",
+        param_max="-20000",
+        root_param="fates_nonhydro_smpso",
+        base_params="fates_nonhydro_smpsc",
+    )
+    row_b = _base_row(
+        parameter_name="param_b",
+        coord="['fates_pft']",
+        param_type="scale_from_root",
+        param_min="-600000",
+        param_max="-20000",
+        root_param="fates_nonhydro_smpsc",
+        base_params="fates_nonhydro_smpso",
+    )
+    
+    return row_a, row_b
 
 @pytest.fixture
 def joint_param_row() -> pd.Series:
