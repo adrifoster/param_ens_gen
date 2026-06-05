@@ -5,8 +5,10 @@ ParamEnsemble class - responsible for generating the entire ensemble
 from __future__ import annotations
 from dataclasses import dataclass, fields
 from pathlib import Path
-import yaml
 from abc import ABC, abstractmethod
+
+from tqdm import tqdm
+import yaml
 import pandas as pd
 import numpy as np
 from scipy.stats import qmc
@@ -125,7 +127,7 @@ class ParamEnsemble(ABC):
                 )
             with open(config.posterior_sources, "r", encoding="utf-8") as f:
                 posterior_config = yaml.safe_load(f)
-                
+
         self.fixed_indices: dict[str, list[int]] = config.fixed_indices or {}
         if self.fixed_indices:
             _validate_fixed_indices(self.fixed_indices, self.default_ds)
@@ -210,7 +212,7 @@ class ParamEnsemble(ABC):
             ensemble parameter files.
         """
         samples = self.create_samples()
-        for i, sample in enumerate(samples):
+        for i, sample in tqdm(enumerate(samples), total=len(samples), unit="member"):
             ds = self.create_ensemble_member(sample)
             file_name = f"{self.file_prefix}_{_generate_suffix(i)}.nc"
             ds.to_netcdf(self.ensemble_dir / file_name)

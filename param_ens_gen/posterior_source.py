@@ -23,6 +23,8 @@ from typing import Optional
 import numpy as np
 import pandas as pd
 
+from .utils import validate_normalized_value
+
 _DEFAULT_SORT_INDEX = 0
 
 
@@ -126,16 +128,8 @@ class PosteriorSource:
         Returns:
             pd.Series: One row of posterior draws, indexed by variable name.
         """
-        if normalized_value > 1.0:
-            raise ValueError(
-                f"normalized_value={normalized_value}. "
-                "Cannot use a normalized_value greater than 1.0"
-            )
-        if normalized_value < 0.0:
-            raise ValueError(
-                f"normalized_value={normalized_value}. "
-                "Cannot use a normalized_value less than 0.0"
-            )
+        validate_normalized_value(normalized_value)
+
         if self._draws is None:
             self._load()
         n = len(self._draws)

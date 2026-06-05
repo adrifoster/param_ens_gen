@@ -390,7 +390,9 @@ class SlicedParameter(Parameter, param_type="sliced"):
     """Parameter that targets one slice of a dimension."""
 
     def _validate_specs(self) -> None:
-        """Require slice_dim, slice_index, and base_params to all be set. Also len(base_params) == 1."""
+        """Require slice_dim, slice_index, and base_params to all be set.
+        Also len(base_params) == 1.
+        """
         missing = []
         if self.spec.slice_dim is None:
             missing.append("slice_dim")
@@ -599,13 +601,14 @@ class JointParameter(Parameter, param_type="joint"):
         Args:
             ds (xr.Dataset): Working copy of the parameter dataset. Modified in place.
             default_ds (xr.Dataset): Unchanging default dataset.
-            value (float | np.ndarray | list[np.ndarray]): One array per entry in ``spec.base_params``.
-                Must have the same length as ``spec.base_params``.
-            fixed_indices (dict[str, list[int]] | None, optional): Indices to hold at default.. Defaults to None.
+            value (float | np.ndarray | list[np.ndarray]): One array per entry in
+                spec.base_params. Must have the same length as spec.base_params.
+            fixed_indices (dict[str, list[int]] | None, optional): Indices to hold at
+                default. Defaults to None.
 
         Raises:
-            TypeError: If ``value`` is not iterable (e.g. a bare float was passed).
-            ValueError: If ``len(value)`` does not match ``len(spec.base_params)``.
+            TypeError: If value is not iterable (e.g. a bare float was passed).
+            ValueError: If len(value) does not match len(spec.base_params).
         """
         for parameter, val in zip(self.spec.base_params, self._coerce_value_seq(value)):
             arr = ds[parameter].values.copy()

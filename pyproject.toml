@@ -12,10 +12,14 @@ dependencies = [
 "scipy",
 "pandas",
 "pyyaml",
+"tqdm",
 ]
  
 [project.optional-dependencies]
 dev = ["pytest>=8", "pytest-cov", "pytest-mock", "black", "pylint"]
+
+[project.scripts]
+param_ens_gen = "param_ens_gen.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
@@ -25,8 +29,9 @@ include = ["param_ens_gen*"]
 testpaths = ["tests"]
 
 [tool.pylint.main]
-source-roots = ["param_ens_gen"]
+source-roots = ["."]
 
 [tool.black]
 target-version = ["py310", "py311", "py312"]
 line-length = 88
+

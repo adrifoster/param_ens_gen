@@ -16,6 +16,7 @@ import numpy as np
 
 from .distribution_stat import DistributionStat
 from .posterior_source import PosteriorSource, _DEFAULT_SORT_INDEX
+from .utils import validate_normalized_value
 
 
 @dataclass
@@ -142,6 +143,7 @@ class UniformSampler(Sampler, sampler_type="uniform"):
     """
 
     def __init__(
+        # pylint: disable=unused-argument
         self,
         row: pd.Series,
         pft_sheet: pd.DataFrame | None = None,
@@ -187,16 +189,7 @@ class UniformSampler(Sampler, sampler_type="uniform"):
         context: SampleContext,
     ) -> float | np.ndarray:
         """Generate a sample for a parameter"""
-        if normalized_value > 1.0:
-            raise ValueError(
-                f"normalized_value={normalized_value}. "
-                "Cannot use a normalized_value greater than 1.0"
-            )
-        if normalized_value < 0.0:
-            raise ValueError(
-                f"normalized_value={normalized_value}. "
-                "Cannot use a normalized_value less than 0.0"
-            )
+        validate_normalized_value(normalized_value)
         min_val, max_val = self.resolve_bounds(context.default_value)
         return min_val + normalized_value * (max_val - min_val)
 
@@ -233,6 +226,7 @@ class PosteriorSampler(Sampler, sampler_type="posterior"):
     """
 
     def __init__(
+        # pylint: disable=unused-argument
         self,
         row: pd.Series,
         pft_sheet: pd.DataFrame | None = None,
@@ -334,7 +328,7 @@ class PosteriorSampler(Sampler, sampler_type="posterior"):
         result = [np.zeros(n_indices) for _ in self.parameters]
         if len(self.sources) == 1 and self.sources[0].is_broadcast:
             unscaled = self.sources[0].unscale(value)
-            for k, var in enumerate(self.parameters):
+            for k, _ in enumerate(self.parameters):
                 result[k][:] = unscaled
         else:
             for source in self.sources:
@@ -343,7 +337,7 @@ class PosteriorSampler(Sampler, sampler_type="posterior"):
                     range(n_indices) if source.is_broadcast else source.array_indices
                 )
                 for array_idx in indices:
-                    for k, var in enumerate(self.parameters):
+                    for k, _ in enumerate(self.parameters):
                         result[k][array_idx] = row
         return result
 

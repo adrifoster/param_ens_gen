@@ -12,6 +12,7 @@ dependencies:
   - jupyterlab
   - ipykernel
   - pip
+  - tqdm
   # --- dev / test ---
   - black
   - pylint

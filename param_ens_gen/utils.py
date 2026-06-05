@@ -35,8 +35,8 @@ def read_param_list(
 
     try:
         main = pd.read_csv(main_path)
-    except pd.errors.EmptyDataError:
-        raise ValueError(f"'main.csv' in '{param_dir}' is empty.")
+    except pd.errors.EmptyDataError as exc:
+        raise ValueError(f"'main.csv' in '{param_dir}' is empty.") from exc
 
     if main.empty:
         raise ValueError(f"'main.csv' in '{param_dir}' is empty.")
@@ -47,3 +47,21 @@ def read_param_list(
             pft_sheets[csv_file.stem] = pd.read_csv(csv_file)
 
     return main, pft_sheets
+
+
+def validate_normalized_value(normalized_value: float) -> None:
+    """Raise ValueError if normalized_value is outside [0, 1].
+
+    Args:
+        normalized_value (float): Value to validate.
+    """
+    if normalized_value > 1.0:
+        raise ValueError(
+            f"normalized_value={normalized_value}. "
+            "Cannot use a normalized_value greater than 1.0"
+        )
+    if normalized_value < 0.0:
+        raise ValueError(
+            f"normalized_value={normalized_value}. "
+            "Cannot use a normalized_value less than 0.0"
+        )

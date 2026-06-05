@@ -493,7 +493,8 @@ def test_expand_params_active_index_set(lh_expand_ensemble):
 def test_expand_params_non_expanded_has_no_active_index(lh_expand_ensemble):
     """Non-expanded params have active_index=None."""
     scalar = next(
-        p for p in lh_expand_ensemble.params
+        p
+        for p in lh_expand_ensemble.params
         if p.spec.name == "fates_canopy_closure_thresh"
     )
     assert scalar.active_index is None
@@ -525,9 +526,7 @@ def test_expand_params_fixed_indices_excluded(
     assert len(expanded) == 2
 
 
-def test_expand_params_unknown_expand_dim_raises(
-    tmp_path, default_param_file
-):
+def test_expand_params_unknown_expand_dim_raises(tmp_path, default_param_file):
     """expand_dim referencing a dimension not in default_ds raises ValueError."""
     pd.DataFrame(
         [
@@ -560,4 +559,3 @@ def test_expand_params_unknown_expand_dim_raises(
     )
     with pytest.raises(ValueError, match="not found in default_ds"):
         LatinHypercubeEnsemble(config)
-        
