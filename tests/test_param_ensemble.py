@@ -1,9 +1,9 @@
 """Tests for ParamEnsemble"""
 
-import pytest
-import xarray as xr
 from pathlib import Path
 
+import pytest
+import xarray as xr
 import numpy as np
 import pandas as pd
 
@@ -16,7 +16,7 @@ from param_ens_gen.param_ensemble import (
 )
 
 from param_ens_gen.ensemble_config import LatinHypercubeConfig
-from param_ens_gen.parameter import DimIndex
+from param_ens_gen.parameter import DimIndex, Parameter
 
 
 def test_from_dict_missing_ensemble_type(
@@ -255,8 +255,6 @@ def test_from_dict_param_list_subsets_correctly(
 
 def test_ensemble_params_types(lh_ensemble):
     """All params are Parameter instances."""
-    from param_ens_gen.parameter import Parameter
-
     assert all(isinstance(p, Parameter) for p in lh_ensemble.params)
 
 
@@ -452,7 +450,7 @@ def test_oat_create_ensemble_key_bad_direction_raises(oat_ensemble):
         oat_ensemble.create_ensemble_key([bad_sample])
 
 
-def test_create_ensemble_writes_files(lh_ensemble, tmp_path):
+def test_create_ensemble_writes_files(lh_ensemble):
     lh_ensemble.create_ensemble()
     output_files = list(lh_ensemble.ensemble_dir.glob("test_*.nc"))
     assert len(output_files) == 5

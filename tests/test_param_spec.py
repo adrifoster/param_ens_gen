@@ -113,7 +113,7 @@ def test_from_row_explicit_empty_coord_is_scalar(default_row):
     row = default_row.copy()
     row["coord"] = "[]"
     spec = ParamSpec.from_row(row)
-    assert spec.dims == []
+    assert not spec.dims
 
 
 def test_from_row_base_params_parsed_from_list_literal(joint_param_row):
