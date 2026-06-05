@@ -334,7 +334,7 @@ class LatinHypercubeEnsemble(ParamEnsemble, ensemble_type="LatinHypercube"):
         """
 
         # build latin hypercube
-        latin_hypercube = self.build_lh(len(self.params), self.prebuilt)
+        latin_hypercube = self.build_lh(self.prebuilt)
 
         # draw samples
         samples = []
@@ -405,12 +405,11 @@ class LatinHypercubeEnsemble(ParamEnsemble, ensemble_type="LatinHypercube"):
         )
 
     def build_lh(
-        self, n_lh_dims: int, prebuilt: np.ndarray | None = None
+        self, prebuilt: np.ndarray | None = None
     ) -> np.ndarray:
         """Create a Latin Hypercube, or validate a pre-built one
 
         Args:
-            n_lh_dims (int): number of dimensions for the array (i.e. number of params)
             prebuilt (np.ndarray | None, optional): Optional pre-built hypercube.
             Defaults to None.
 
@@ -425,15 +424,15 @@ class LatinHypercubeEnsemble(ParamEnsemble, ensemble_type="LatinHypercube"):
 
         # validate pre-built LH
         if prebuilt is not None:
-            if prebuilt.shape != (self.n_samples, n_lh_dims):
+            if prebuilt.shape != (self.n_samples, len(self.params)):
                 raise ValueError(
                     f"Pre-built LH sample has shape {prebuilt.shape}, "
-                    f"expected ({self.n_samples}, {n_lh_dims})."
+                    f"expected ({self.n_samples}, {len(self.params)})."
                 )
             return prebuilt
 
         # otherwise generate one
-        return qmc.LatinHypercube(d=n_lh_dims).random(n=self.n_samples)
+        return qmc.LatinHypercube(d=len(self.params)).random(n=self.n_samples)
 
 
 class OneAtATimeParameterEnsemble(ParamEnsemble, ensemble_type="OAT"):

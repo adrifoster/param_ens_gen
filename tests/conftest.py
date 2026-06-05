@@ -581,8 +581,8 @@ def ensemble_param_dir(tmp_path) -> Path:
                 "coord": "[]",
                 "param_type": "default",
                 "strategy": "uniform",
-                "param_min": "0.7",
-                "param_max": "0.1",
+                "param_min": "0.1",
+                "param_max": "0.7",
                 "slice_dim": None,
                 "slice_index": None,
                 "root_param": None,
@@ -678,23 +678,29 @@ def posterior_config_file(tmp_path, posterior_file) -> Path:
 
 
 @pytest.fixture
-def lh_ensemble(ensemble_param_dir, default_param_file, tmp_path):
+def lh_ensemble(
+    ensemble_param_dir, default_param_file, tmp_path, posterior_config_file
+):
     config = LatinHypercubeConfig(
         param_dir=ensemble_param_dir,
         ensemble_dir=tmp_path / "ensemble",
         file_prefix="test",
         default_param_file=default_param_file,
+        posterior_sources=posterior_config_file,
         ensemble_members=5,
     )
     return LatinHypercubeEnsemble(config)
 
 
 @pytest.fixture
-def oat_ensemble(ensemble_param_dir, default_param_file, tmp_path):
+def oat_ensemble(
+    ensemble_param_dir, default_param_file, tmp_path, posterior_config_file
+):
     config = OneAtATimeConfig(
         param_dir=ensemble_param_dir,
         ensemble_dir=tmp_path / "ensemble",
         file_prefix="test",
         default_param_file=default_param_file,
+        posterior_sources=posterior_config_file,
     )
     return OneAtATimeParameterEnsemble(config)
