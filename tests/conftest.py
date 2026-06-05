@@ -1,11 +1,12 @@
 """Fixtures shared across param_ens_gen tests."""
 
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 import xarray as xr
 import pytest
 import yaml
-from pathlib import Path
 
 from param_ens_gen.posterior_source import PosteriorSource
 from param_ens_gen.parameter import (
@@ -70,7 +71,7 @@ def scalar_row() -> pd.Series:
     """
     return _base_row(
         parameter_name="fates_canopy_closure_thresh",
-        long_name="tree canopy coverage at which crown area allometry changes from savanna to forest value",
+        long_name="canopy coverage when crown area allometry changes from savanna to forest",
         category="biogeochemistry",
         subcategory="vegetation dynamics",
         units="1/yr",
@@ -189,7 +190,7 @@ def joint_param_row() -> pd.Series:
     """
     return _base_row(
         parameter_name="fates_leafn_vert_scaler",
-        long_name="Coefficient one for decrease in leaf nitrogen through the canopy, from Lloyd et al. 2010",
+        long_name="Coefficient one for decrease in leaf nitrogen through the canopy",
         category="stomatal",
         subcategory="photosynthesis",
         units="unitless",
@@ -276,6 +277,7 @@ def empty_posterior_file(tmp_path) -> Path:
 
 @pytest.fixture
 def single_row_posterior(tmp_path):
+    """A single-row posterior source"""
     file = tmp_path / "posterior.txt"
     file.write_text("leaf_cn\n25.0\n")
     return PosteriorSource(
@@ -351,7 +353,7 @@ def pft_sheet() -> pd.DataFrame:
 
 
 @pytest.fixture
-def pft_row(pft_sheet) -> pd.Series:
+def pft_row() -> pd.Series:
     """A valid row for a parameter with PFT-specific bounds.
 
     Returns:
@@ -415,7 +417,7 @@ def multi_source_posterior_config(posterior_file, posterior_file_2) -> dict:
 
 
 @pytest.fixture
-def pft_uniform_row(pft_sheet) -> pd.Series:
+def pft_uniform_row() -> pd.Series:
     """A valid row for a uniform parameter with PFT-specific bounds."""
     return _base_row(
         parameter_name="fates_leaf_slatop",
@@ -543,6 +545,7 @@ def joint_param(joint_param_row, default_ds, posterior_config) -> JointParameter
 
 @pytest.fixture
 def base_paths(tmp_path):
+    """Base paths for EnsembleConfig"""
     return {
         "param_dir": tmp_path,
         "ensemble_dir": tmp_path / "ensemble",
@@ -558,6 +561,7 @@ def base_paths(tmp_path):
 
 @pytest.fixture
 def param_dir(tmp_path) -> Path:
+    """A parameter dir with main and pft sheets"""
     main = pd.DataFrame(
         {
             "parameter_name": ["fates_leaf_slatop"],
@@ -616,7 +620,7 @@ def ensemble_param_dir(tmp_path) -> Path:
             },
             {
                 "parameter_name": "fates_canopy_closure_thresh",
-                "long_name": "tree canopy coverage at which crown area allometry changes from savanna to forest value",
+                "long_name": "canopy coverage at which crown area allometry changes",
                 "category": "biogeochemistry",
                 "subcategory": "vegetation dynamics",
                 "units": "1/yr",
@@ -664,7 +668,7 @@ def ensemble_param_dir(tmp_path) -> Path:
             },
             {
                 "parameter_name": "fates_leafn_vert_scaler",
-                "long_name": "Coefficient one for decrease in leaf nitrogen through the canopy, from Lloyd et al. 2010",
+                "long_name": "Coefficient for decrease in leaf nitrogen through the canopy",
                 "category": "stomatal",
                 "subcategory": "photosynthesis",
                 "units": "unitless",
@@ -676,7 +680,10 @@ def ensemble_param_dir(tmp_path) -> Path:
                 "slice_dim": None,
                 "slice_index": None,
                 "root_param": None,
-                "base_params": "['fates_leafn_vert_scaler_coeff1', 'fates_leafn_vert_scaler_coeff2']",
+                "base_params": (
+                    "['fates_leafn_vert_scaler_coeff1',"
+                    " 'fates_leafn_vert_scaler_coeff2']"
+                ),
             },
         ]
     ).to_csv(tmp_path / "main.csv", index=False)
@@ -723,6 +730,7 @@ def posterior_config_file(tmp_path, posterior_file) -> Path:
 def lh_ensemble(
     ensemble_param_dir, default_param_file, tmp_path, posterior_config_file
 ):
+    """A latinhypercube ensemble"""
     config = LatinHypercubeConfig(
         param_dir=ensemble_param_dir,
         ensemble_dir=tmp_path / "ensemble",
@@ -738,6 +746,7 @@ def lh_ensemble(
 def oat_ensemble(
     ensemble_param_dir, default_param_file, tmp_path, posterior_config_file
 ):
+    """A one at a time ensemble"""
     config = OneAtATimeConfig(
         param_dir=ensemble_param_dir,
         ensemble_dir=tmp_path / "ensemble",
@@ -794,6 +803,7 @@ def expand_param_dir(tmp_path) -> Path:
 
 @pytest.fixture
 def lh_expand_ensemble(expand_param_dir, default_param_file, tmp_path):
+    """A latin hypercube ensemble with expanded dims"""
     config = LatinHypercubeConfig(
         param_dir=expand_param_dir,
         ensemble_dir=tmp_path / "ensemble",
