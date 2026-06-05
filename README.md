@@ -63,7 +63,7 @@ A folder containing CSV files that describe which parmeters to vary:
 | `coord` | Dimensions of this parameter, e.g. `['fates_pft']` or `[]` for scalars |
 | `param_type` | One of `default`, `sliced`, `scale_from_root`, or `joint` |
 | `strategy` | Sampling strategy: `uniform` or `posterior` |
-| `param_min` | Minimum value (a scalar value or `Xpercent` for percent-based bounds, or `pft` for PFT-specific bounds) |
+| `param_min` | Minimum value (a scalar value, "Xpercent" for percent-based bounds, or "pft" for PFT-specific bounds) |
 | `param_max` | Maximum value (same options as `param_min`) |
 
 **Optional columns:**
