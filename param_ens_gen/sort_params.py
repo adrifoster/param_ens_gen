@@ -29,7 +29,7 @@ def sort_params(params: list[Parameter]) -> list[Parameter]:
         list[Parameter]: Topologically sorted parameter list.
     """
     spec_name_to_param: dict[str, Parameter] = {p.spec.name: p for p in params}
-    
+
     # map from dataset variable name to param that writes it
     var_to_param: dict[str, Parameter] = {}
     for p in params:
@@ -52,7 +52,7 @@ def sort_params(params: list[Parameter]) -> list[Parameter]:
                 if root_param_name != param.spec.name:
                     dependents[root_param_name].append(param.spec.name)
                     in_degree[param.spec.name] += 1
-                    
+
     # Kahn's algorithm: seed with all zero-in-degree nodes in original order
     queue: deque[str] = deque(
         p.spec.name for p in params if in_degree[p.spec.name] == 0

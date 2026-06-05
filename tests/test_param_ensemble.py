@@ -15,7 +15,8 @@ from param_ens_gen.param_ensemble import (
     ParameterSample,
 )
 
-from param_ens_gen.ensemble_config import LatinHypercubeConfig, OneAtATimeConfig
+from param_ens_gen.ensemble_config import LatinHypercubeConfig
+from param_ens_gen.parameter import DimIndex
 
 
 def test_from_dict_missing_ensemble_type(
@@ -329,9 +330,11 @@ def test_fixed_indices_valid(
     )
     ensemble = LatinHypercubeEnsemble(config)
     assert ensemble.fixed_indices == {"fates_pft": [0, 1]}
-    
-def test_fixed_indices_negative_index_raises(ensemble_param_dir, default_param_file, 
-                                             posterior_config_file, tmp_path):
+
+
+def test_fixed_indices_negative_index_raises(
+    ensemble_param_dir, default_param_file, posterior_config_file, tmp_path
+):
     config = LatinHypercubeConfig(
         param_dir=ensemble_param_dir,
         ensemble_dir=tmp_path / "ensemble",
@@ -360,7 +363,7 @@ def test_build_lh_prebuilt_wrong_samples(lh_ensemble):
     bad = np.random.default_rng(0).random((10, lh_ensemble.num_params))
     with pytest.raises(ValueError, match="shape"):
         lh_ensemble.build_lh(prebuilt=bad)
-        
+
 
 def test_build_lh_prebuilt_wrong_params(lh_ensemble):
     bad = np.random.default_rng(0).random((5, 10))
@@ -417,7 +420,8 @@ def test_oat_create_ensemble_member_wrong_length(oat_ensemble, lh_ensemble):
     lh_samples = lh_ensemble.create_samples()
     with pytest.raises(ValueError, match="exactly one"):
         oat_ensemble.create_ensemble_member(lh_samples[0])
-        
+
+
 def test_lh_create_ensemble_key(lh_ensemble):
     samples = lh_ensemble.create_samples()
     key = lh_ensemble.create_ensemble_key(samples)
@@ -431,12 +435,14 @@ def test_oat_create_ensemble_key(oat_ensemble):
     assert "ensemble" in key.columns
     assert "direction" in key.columns
     assert set(key["direction"]) == {"minimum", "maximum"}
-    
+
+
 def test_oat_create_ensemble_key_wrong_length_raises(oat_ensemble, lh_ensemble):
     """create_ensemble_key raises if any sample has more than one ParameterSample."""
     lh_samples = lh_ensemble.create_samples()
     with pytest.raises(ValueError, match="exactly one"):
         oat_ensemble.create_ensemble_key(lh_samples)
+
 
 def test_oat_create_ensemble_key_bad_direction_raises(oat_ensemble):
     """create_ensemble_key raises if normalized_value is not 0.0 or 1.0."""
@@ -444,7 +450,8 @@ def test_oat_create_ensemble_key_bad_direction_raises(oat_ensemble):
     bad_sample = EnsembleMemberSample([ParameterSample(param, 0.5)])
     with pytest.raises(ValueError, match="expects only 0.0 or 1.0"):
         oat_ensemble.create_ensemble_key([bad_sample])
-    
+
+
 def test_create_ensemble_writes_files(lh_ensemble, tmp_path):
     lh_ensemble.create_ensemble()
     output_files = list(lh_ensemble.ensemble_dir.glob("test_*.nc"))
@@ -453,3 +460,104 @@ def test_create_ensemble_writes_files(lh_ensemble, tmp_path):
     assert key_file.exists()
     list_file = lh_ensemble.ensemble_dir / "test.txt"
     assert list_file.exists()
+
+
+def test_expand_params_count(lh_expand_ensemble):
+    """Expandable param over N_PFTS=3 produces 3 clones; scalar passes through."""
+    # 3 expanded copies of fates_leaf_slatop + 1 scalar = 4 total
+    assert len(lh_expand_ensemble.params) == 4
+
+
+def test_expand_params_names(lh_expand_ensemble):
+    """Expanded params are named with index suffix; non-expanded is unchanged."""
+    names = [p.spec.name for p in lh_expand_ensemble.params]
+    assert "fates_leaf_slatop_0" in names
+    assert "fates_leaf_slatop_1" in names
+    assert "fates_leaf_slatop_2" in names
+    assert "fates_canopy_closure_thresh" in names
+
+
+def test_expand_params_active_index_set(lh_expand_ensemble):
+    """Expanded params have active_index set to the correct dim and index."""
+
+    expanded = [p for p in lh_expand_ensemble.params if p.active_index is not None]
+    assert len(expanded) == 3
+    indices = {p.active_index for p in expanded}
+    assert indices == {
+        DimIndex("fates_pft", 0),
+        DimIndex("fates_pft", 1),
+        DimIndex("fates_pft", 2),
+    }
+
+
+def test_expand_params_non_expanded_has_no_active_index(lh_expand_ensemble):
+    """Non-expanded params have active_index=None."""
+    scalar = next(
+        p for p in lh_expand_ensemble.params
+        if p.spec.name == "fates_canopy_closure_thresh"
+    )
+    assert scalar.active_index is None
+
+
+def test_expand_params_spec_not_shared(lh_expand_ensemble):
+    """Each expanded clone has its own spec instance."""
+    expanded = [p for p in lh_expand_ensemble.params if p.active_index is not None]
+    specs = [id(p.spec) for p in expanded]
+    assert len(specs) == len(set(specs))
+
+
+def test_expand_params_fixed_indices_excluded(
+    expand_param_dir, default_param_file, tmp_path
+):
+    """Indices listed in fixed_indices are not expanded into."""
+    config = LatinHypercubeConfig(
+        param_dir=expand_param_dir,
+        ensemble_dir=tmp_path / "ensemble",
+        file_prefix="test",
+        default_param_file=default_param_file,
+        ensemble_members=5,
+        fixed_indices={"fates_pft": [2]},
+    )
+    ensemble = LatinHypercubeEnsemble(config)
+    expanded = [p for p in ensemble.params if p.active_index is not None]
+    active_indices = [p.active_index.index for p in expanded]
+    assert 2 not in active_indices
+    assert len(expanded) == 2
+
+
+def test_expand_params_unknown_expand_dim_raises(
+    tmp_path, default_param_file
+):
+    """expand_dim referencing a dimension not in default_ds raises ValueError."""
+    pd.DataFrame(
+        [
+            {
+                "parameter_name": "fates_leaf_slatop",
+                "long_name": "SLA",
+                "category": "stomatal",
+                "subcategory": "photosynthesis",
+                "units": "m^2/gC",
+                "coord": "['fates_pft']",
+                "param_type": "default",
+                "strategy": "uniform",
+                "param_min": "0.005",
+                "param_max": "0.05",
+                "slice_dim": None,
+                "slice_index": None,
+                "root_param": None,
+                "base_params": "",
+                "expand_dim": "not_a_real_dim",
+            }
+        ]
+    ).to_csv(tmp_path / "main.csv", index=False)
+
+    config = LatinHypercubeConfig(
+        param_dir=tmp_path,
+        ensemble_dir=tmp_path / "ensemble",
+        file_prefix="test",
+        default_param_file=default_param_file,
+        ensemble_members=5,
+    )
+    with pytest.raises(ValueError, match="not found in default_ds"):
+        LatinHypercubeEnsemble(config)
+        

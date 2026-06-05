@@ -111,7 +111,7 @@ class ParamEnsemble(ABC):
 
         # set attributes
         self.file_prefix = config.file_prefix
-        
+
         if not config.default_param_file.exists():
             raise FileNotFoundError(
                 f"Default parameter file '{config.default_param_file}' does not exist."
@@ -122,9 +122,13 @@ class ParamEnsemble(ABC):
             if not config.posterior_sources.exists():
                 raise FileNotFoundError(
                     f"Posterior sources file '{config.posterior_sources}' does not exist."
-                    )
+                )
             with open(config.posterior_sources, "r", encoding="utf-8") as f:
                 posterior_config = yaml.safe_load(f)
+                
+        self.fixed_indices: dict[str, list[int]] = config.fixed_indices or {}
+        if self.fixed_indices:
+            _validate_fixed_indices(self.fixed_indices, self.default_ds)
 
         # create sorted list of parameter objects
         # this automatically checks and sorts order to make sure anything
@@ -148,10 +152,6 @@ class ParamEnsemble(ABC):
         self._expand_params()
         self.num_params = len(self.params)
 
-        self.fixed_indices: dict[str, list[int]] = config.fixed_indices or {}
-        if self.fixed_indices:
-            _validate_fixed_indices(self.fixed_indices, self.default_ds)
-
     @classmethod
     def from_dict(
         cls,
@@ -168,7 +168,7 @@ class ParamEnsemble(ABC):
 
             {
                 'ensemble_type': 'LatinHypercube',
-                'param_data_file': 'params.xlsx',
+                'param_dir': 'param_dir/',
                 'ensemble_dir': 'output/',
                 'file_prefix': 'my_run',
                 'default_ds': ds,
@@ -274,22 +274,25 @@ class ParamEnsemble(ABC):
         Returns:
             pd.DataFrame: output data frame that serves as ensemble key
         """
-    def _expand_params(self) -> list[Parameter]:
+
+    def _expand_params(self):
         """Expand params list with expand_dim set; pass others through unchanged."""
-        
+
         # map of all dimension names to all valid 0-based indices
         full_index_map = {
-            dim: list(range(self.default_ds.sizes[dim]))
-            for dim in self.default_ds.dims
+            dim: list(range(self.default_ds.sizes[dim])) for dim in self.default_ds.dims
         }
         result = []
         for param in self.params:
             if param.spec.expand_dim is not None:
-                result.extend(_expand_one_param(param, self.fixed_indices, full_index_map))
+                result.extend(
+                    _expand_one_param(param, self.fixed_indices, full_index_map)
+                )
             else:
                 result.append(param)
-        return result
-    
+        self.params = result
+
+
 class LatinHypercubeEnsemble(ParamEnsemble, ensemble_type="LatinHypercube"):
     """Concrete class for the Latin Hypercube ensemble class
 
@@ -419,9 +422,7 @@ class LatinHypercubeEnsemble(ParamEnsemble, ensemble_type="LatinHypercube"):
             .rename_axis(None, axis=1)
         )
 
-    def build_lh(
-        self, prebuilt: np.ndarray | None = None
-    ) -> np.ndarray:
+    def build_lh(self, prebuilt: np.ndarray | None = None) -> np.ndarray:
         """Create a Latin Hypercube, or validate a pre-built one
 
         Args:
@@ -630,11 +631,13 @@ def _validate_fixed_indices(
                 f"Dimension '{dim}' has size {dim_size} (valid: 0–{dim_size - 1})."
             )
 
-def _expand_one_param(param: Parameter,
-                      fixed_indices: dict[str, list[int]],
-                      full_index_map: dict[str, list[int]],
-                      ) -> list[Parameter]:
-    
+
+def _expand_one_param(
+    param: Parameter,
+    fixed_indices: dict[str, list[int]],
+    full_index_map: dict[str, list[int]],
+) -> list[Parameter]:
+
     expand_dim = param.spec.expand_dim
     if expand_dim not in full_index_map:
         raise ValueError(

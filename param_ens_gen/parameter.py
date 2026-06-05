@@ -332,7 +332,7 @@ class Parameter(ABC):
             fixed_indices (dict[str, list[int]]): Dimension-to-indices mapping for
                 positions to hold at default. Empty dict means no positions are fixed.
         """
-        
+
     def for_index(self, dim: str, index: int) -> Parameter:
         """Return a copy of this Parameter bound to a specific dim/index.
 

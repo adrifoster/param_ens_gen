@@ -137,6 +137,7 @@ def scale_from_root_row() -> pd.Series:
         base_params="fates_nonhydro_smpsc",
     )
 
+
 @pytest.fixture
 def root_row() -> pd.Series:
     """A valid row for a root parameter.
@@ -152,10 +153,11 @@ def root_row() -> pd.Series:
         param_max="-10000",
     )
 
+
 @pytest.fixture
 def mutually_dependent_rows() -> tuple[pd.Series, pd.Series]:
     """Two mutually-dependent scale_from_root parameters"""
-    
+
     row_a = _base_row(
         parameter_name="param_a",
         coord="['fates_pft']",
@@ -174,8 +176,9 @@ def mutually_dependent_rows() -> tuple[pd.Series, pd.Series]:
         root_param="fates_nonhydro_smpsc",
         base_params="fates_nonhydro_smpso",
     )
-    
+
     return row_a, row_b
+
 
 @pytest.fixture
 def joint_param_row() -> pd.Series:
@@ -743,3 +746,59 @@ def oat_ensemble(
         posterior_sources=posterior_config_file,
     )
     return OneAtATimeParameterEnsemble(config)
+
+
+@pytest.fixture
+def expand_param_dir(tmp_path) -> Path:
+    """A param_dir with one expandable and one non-expandable parameter."""
+    pd.DataFrame(
+        [
+            {
+                "parameter_name": "fates_leaf_slatop",
+                "long_name": "SLA at top of canopy",
+                "category": "stomatal",
+                "subcategory": "photosynthesis",
+                "units": "m^2/gC",
+                "coord": "['fates_pft']",
+                "param_type": "default",
+                "strategy": "uniform",
+                "param_min": "0.005",
+                "param_max": "0.05",
+                "slice_dim": None,
+                "slice_index": None,
+                "root_param": None,
+                "base_params": "",
+                "expand_dim": "fates_pft",
+            },
+            {
+                "parameter_name": "fates_canopy_closure_thresh",
+                "long_name": "canopy closure threshold",
+                "category": "biogeochemistry",
+                "subcategory": "vegetation dynamics",
+                "units": "1/yr",
+                "coord": "[]",
+                "param_type": "default",
+                "strategy": "uniform",
+                "param_min": "0.1",
+                "param_max": "0.7",
+                "slice_dim": None,
+                "slice_index": None,
+                "root_param": None,
+                "base_params": None,
+                "expand_dim": None,
+            },
+        ]
+    ).to_csv(tmp_path / "main.csv", index=False)
+    return tmp_path
+
+
+@pytest.fixture
+def lh_expand_ensemble(expand_param_dir, default_param_file, tmp_path):
+    config = LatinHypercubeConfig(
+        param_dir=expand_param_dir,
+        ensemble_dir=tmp_path / "ensemble",
+        file_prefix="test",
+        default_param_file=default_param_file,
+        ensemble_members=5,
+    )
+    return LatinHypercubeEnsemble(config)

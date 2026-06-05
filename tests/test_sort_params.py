@@ -5,6 +5,7 @@ import pytest
 from param_ens_gen.sort_params import sort_params
 from param_ens_gen.parameter import DefaultParameter, ScaleFromRootParameter
 
+
 def test_sort_params_no_dependencies(default_param, scalar_param):
     """Parameters with no dependencies preserve relative order."""
     params = [default_param, scalar_param]
@@ -43,6 +44,7 @@ def test_sort_params_cycle_raises(default_ds, mutually_dependent_rows):
 
     with pytest.raises(ValueError, match="Cycle detected"):
         sort_params([param_a, param_b])
+
 
 def test_sort_params_empty():
     """Empty list returns empty list."""
