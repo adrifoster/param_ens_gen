@@ -5,6 +5,7 @@ Parameter - classes for parameter logic
 from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import NamedTuple, Optional
+import copy
 import pandas as pd
 import numpy as np
 import xarray as xr
@@ -331,6 +332,19 @@ class Parameter(ABC):
             fixed_indices (dict[str, list[int]]): Dimension-to-indices mapping for
                 positions to hold at default. Empty dict means no positions are fixed.
         """
+        
+    def for_index(self, dim: str, index: int) -> Parameter:
+        """Return a copy of this Parameter bound to a specific dim/index.
+
+        sampler and _dim_sizes are intentionally shared.
+        active_index and spec.name should be the only fields that differ between
+        expanded copies.
+        """
+        clone = copy.copy(self)
+        clone.active_index = DimIndex(dim=dim, index=index)
+        clone.spec = copy.copy(self.spec)
+        clone.spec.name = f"{self.spec.name}_{index}"
+        return clone
 
 
 # ----------------------------------------------------------------------------------------

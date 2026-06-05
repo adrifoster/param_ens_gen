@@ -145,6 +145,7 @@ class ParamEnsemble(ABC):
                 for _, row in main.iterrows()
             ]
         )
+        self._expand_params()
         self.num_params = len(self.params)
 
         self.fixed_indices: dict[str, list[int]] = config.fixed_indices or {}
@@ -273,8 +274,22 @@ class ParamEnsemble(ABC):
         Returns:
             pd.DataFrame: output data frame that serves as ensemble key
         """
-
-
+    def _expand_params(self) -> list[Parameter]:
+        """Expand params list with expand_dim set; pass others through unchanged."""
+        
+        # map of all dimension names to all valid 0-based indices
+        full_index_map = {
+            dim: list(range(self.default_ds.sizes[dim]))
+            for dim in self.default_ds.dims
+        }
+        result = []
+        for param in self.params:
+            if param.spec.expand_dim is not None:
+                result.extend(_expand_one_param(param, self.fixed_indices, full_index_map))
+            else:
+                result.append(param)
+        return result
+    
 class LatinHypercubeEnsemble(ParamEnsemble, ensemble_type="LatinHypercube"):
     """Concrete class for the Latin Hypercube ensemble class
 
@@ -614,3 +629,18 @@ def _validate_fixed_indices(
                 f"fixed_indices['{dim}'] contains out-of-range indices {bad}. "
                 f"Dimension '{dim}' has size {dim_size} (valid: 0–{dim_size - 1})."
             )
+
+def _expand_one_param(param: Parameter,
+                      fixed_indices: dict[str, list[int]],
+                      full_index_map: dict[str, list[int]],
+                      ) -> list[Parameter]:
+    
+    expand_dim = param.spec.expand_dim
+    if expand_dim not in full_index_map:
+        raise ValueError(
+            f"Parameter '{param.spec.name}': expand_dim '{expand_dim}' "
+            f"not found in default_ds. Available: {sorted(full_index_map)}"
+        )
+    fixed_for_dim = fixed_indices.get(expand_dim, [])
+    active = [i for i in full_index_map[expand_dim] if i not in fixed_for_dim]
+    return [param.for_index(expand_dim, idx) for idx in active]

@@ -40,6 +40,9 @@ class ParamSpec:  # pylint: disable=too-many-instance-attributes
     dims : list[str]
         Dimension names for this parameter, e.g. ['fates_pft'],
         ['fates_leafage_class', 'fates_pft'], or [] for scalars.
+    expand_dim: str
+        Dimension name to expand on: e.g., 'fates_pft' or None.
+        If None, inferred from free_dims if unambiguous
     param_type : str
         How this parameter gets scaled and written to parameter file
     slice_dim : str | None
@@ -63,6 +66,7 @@ class ParamSpec:  # pylint: disable=too-many-instance-attributes
     subcategory: str
     units: str
     dims: list[str]
+    expand_dim: Optional[str]
     param_type: str
     slice_dim: Optional[str]
     slice_index: Optional[int]
@@ -124,6 +128,7 @@ class ParamSpec:  # pylint: disable=too-many-instance-attributes
             long_name=str(row.get("long_name", "")),
             units=str(row.get("units", "")),
             dims=_parse_dims(row.get("coord", "")),
+            expand_dim=_parse_optional_str(row.get("expand_dim")),
             param_type=str(row["param_type"]).strip(),
             slice_dim=_parse_optional_str(row.get("slice_dim")),
             slice_index=_parse_optional_int(row.get("slice_index")),
@@ -238,10 +243,10 @@ def _parse_optional_int(value: str | None) -> Optional[int]:
         return None
     try:
         return int(value)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError) as exc:
         raise ValueError(
             f"Expected an integer or blank for slice_index, got: {value!r}"
-        )
+        ) from exc
 
 
 def _parse_optional_str(value: str | None) -> Optional[str]:
@@ -251,7 +256,7 @@ def _parse_optional_str(value: str | None) -> Optional[str]:
         value (str | None): Raw cell value from the spreadsheet.
 
     Returns:
-        Optional[str]: Stripped string, or ``None`` for blank/null/whitespace-only input.
+        Optional[str]: Stripped string, or None for blank/null/whitespace-only input.
     """
     if value is None or (isinstance(value, float) and _is_nan(value)):
         return None
