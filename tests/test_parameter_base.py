@@ -500,3 +500,45 @@ def test_joint_parameter_sample(joint_param, default_ds):
     # values should be within the posterior range
     assert np.all(result[0] >= 0.0) and np.all(result[0] <= 0.95)  # coeff1 range
     assert np.all(result[1] >= 10.0) and np.all(result[1] <= 19.5)  # coeff2 range
+
+
+def test_build_context_pft_axis_set_for_1d_pft_param(default_param, default_ds, mocker):
+    """_build_context sets pft_axis=0 for a 1D PFT parameter."""
+    mock_sample = mocker.patch.object(default_param.sampler, "sample", return_value=0.5)
+    default_param.sample(0.5, default_ds)
+    ctx = mock_sample.call_args[0][1]
+    assert ctx.pft_axis == 0
+
+
+def test_build_context_pft_axis_none_for_scalar_param(scalar_param, default_ds, mocker):
+    """_build_context sets pft_axis=None for a scalar parameter."""
+    mock_sample = mocker.patch.object(scalar_param.sampler, "sample", return_value=0.5)
+    scalar_param.sample(0.5, default_ds)
+    ctx = mock_sample.call_args[0][1]
+    assert ctx.pft_axis is None
+
+
+def test_build_context_pft_axis_correct_for_2d_param(multi_dim_row, default_ds, mocker):
+    """_build_context sets pft_axis to the correct axis for a 2D parameter with pft dim."""
+    # make a 2D param where pft is on axis 1: ['dim_1', 'fates_pft']
+    multi_dim_row["parameter_name"] = "fates_leaf_vcmax25top"
+    multi_dim_row["coord"] = "['fates_leafage_class', 'fates_pft']"
+    multi_dim_row["param_min"] = "20.0"
+    multi_dim_row["param_max"] = "90.0"
+    param = Parameter.from_row(multi_dim_row, default_ds)
+    mock_sample = mocker.patch.object(param.sampler, "sample", return_value=0.5)
+    param.sample(0.5, default_ds)
+    ctx = mock_sample.call_args[0][1]
+    assert ctx.pft_axis == 1
+
+
+def test_build_context_pft_axis_none_for_non_pft_param(
+    multi_dim_param, default_ds, mocker
+):
+    """_build_context sets pft_axis=None when no dimension contains 'pft'."""
+    mock_sample = mocker.patch.object(
+        multi_dim_param.sampler, "sample", return_value=0.5
+    )
+    multi_dim_param.sample(0.5, default_ds)
+    ctx = mock_sample.call_args[0][1]
+    assert ctx.pft_axis is None

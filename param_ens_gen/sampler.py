@@ -38,15 +38,18 @@ class SampleContext:
         None when sampling all free indices together (broadcast mode).
         Used by PosteriorSampler to select the correct PosteriorSource.
         Ignored by UniformSampler.
-    n_indices : int
+    n_indices : int | None
         Total number of positions along the free dimension (1 for scalars).
         Used by PosteriorSampler in broadcast mode to size the output arrays.
         Ignored by UniformSampler.
+    pft_axis: int | None
+        Axis along which the pft-dimension exists
     """
 
     default_value: float | np.ndarray | list[np.ndarray] | None = None
     array_index: int | None = None
     n_indices: list[int] | None = None
+    pft_axis: int | None = None 
 
 
 class Sampler(ABC):
@@ -164,20 +167,22 @@ class UniformSampler(Sampler, sampler_type="uniform"):
 
     def resolve_bounds(
         self,
-        default_value: float | np.ndarray | None,
+        default_value: float | np.ndarray | None = None,
+        pft_axis: int | None = None,
     ) -> tuple[float | np.ndarray, float | np.ndarray]:
         """Resolve min and max bounds and return (min_val, max_val).
 
         Args:
             default_value (float | np.ndarray | None, optional): default value from
             parameter file. Required if either bound is a PercentBound. Defaults to None.
+            pft_axis (int | None, optional) Axis along which pfts are dimensioned
 
         Returns:
             tuple[float | np.ndarray, float | np.ndarray]: (min_val, max_val)
         """
 
-        min_val = self.min_stat.resolve(default_value)
-        max_val = self.max_stat.resolve(default_value)
+        min_val = self.min_stat.resolve(default_value, pft_axis=pft_axis)
+        max_val = self.max_stat.resolve(default_value, pft_axis=pft_axis)
 
         _validate_bounds(min_val, max_val)
 
@@ -190,7 +195,7 @@ class UniformSampler(Sampler, sampler_type="uniform"):
     ) -> float | np.ndarray:
         """Generate a sample for a parameter"""
         validate_normalized_value(normalized_value)
-        min_val, max_val = self.resolve_bounds(context.default_value)
+        min_val, max_val = self.resolve_bounds(context.default_value, context.pft_axis)
         return min_val + normalized_value * (max_val - min_val)
 
     def normalize(

@@ -82,6 +82,36 @@ def test_uniform_sampler_mixed_pft_raises(default_row):
         UniformSampler(row)
 
 
+def test_resolve_bounds_pft_axis_1(default_ds):
+    """resolve_bounds() correctly resolves PFT bounds along axis 1 for 2D parameters."""
+    row = pd.Series(
+        {
+            "parameter_name": "fates_leaf_vcmax25top",
+            "strategy": "uniform",
+            "param_min": "pft",
+            "param_max": "pft",
+        }
+    )
+    pft_sheet = pd.DataFrame(
+        {
+            "pft_index": [1, 2, 3],
+            "pft_name": ["white_spruce", "black_spruce", "deciduous"],
+            "param_min": [20.0, 25.0, 30.0],
+            "param_max": [80.0, 85.0, 90.0],
+        }
+    )
+    sampler = UniformSampler(row, pft_sheet=pft_sheet)
+    default_value = default_ds["fates_leaf_vcmax25top"].values  # shape (2, 3)
+    min_val, max_val = sampler.resolve_bounds(default_value, pft_axis=1)
+    assert min_val.shape == (2, 3)
+    assert max_val.shape == (2, 3)
+    # all rows along leafage_class axis should have the same PFT-specific values
+    np.testing.assert_allclose(min_val[0, :], [20.0, 25.0, 30.0])
+    np.testing.assert_allclose(min_val[1, :], [20.0, 25.0, 30.0])
+    np.testing.assert_allclose(max_val[0, :], [80.0, 85.0, 90.0])
+    np.testing.assert_allclose(max_val[1, :], [80.0, 85.0, 90.0])
+
+
 # ===========================================================================
 # UniformSampler.resolve_bounds
 # ===========================================================================
@@ -108,7 +138,7 @@ def test_resolve_bounds_pft(pft_uniform_row, pft_sheet, default_ds):
     """resolve_bounds() returns per-PFT arrays for PFT-specific bounds."""
     sampler = UniformSampler(pft_uniform_row, pft_sheet=pft_sheet)
     default_value = default_ds["fates_leaf_slatop"].values
-    min_val, max_val = sampler.resolve_bounds(default_value)
+    min_val, max_val = sampler.resolve_bounds(default_value, pft_axis=0)
     np.testing.assert_allclose(min_val, [0.005, 0.004, 0.008])
     np.testing.assert_allclose(max_val, [0.040, 0.035, 0.060])
 
@@ -165,7 +195,7 @@ def test_resolve_bounds_array_any_violation_raises(default_ds):
     default_value = default_ds["fates_leaf_slatop"].values
     sampler = UniformSampler(row, pft_sheet=pft_sheet)
     with pytest.raises(ValueError, match="min > max"):
-        sampler.resolve_bounds(default_value)
+        sampler.resolve_bounds(default_value, pft_axis=0)
 
 
 # ===========================================================================
@@ -217,7 +247,7 @@ def test_sample_at_zero_pft_returns_min(pft_uniform_row, pft_sheet, default_ds):
     """sample(0.0) returns minimum bounds for PFT-specific bounds."""
     sampler = UniformSampler(pft_uniform_row, pft_sheet=pft_sheet)
     default_value = default_ds["fates_leaf_slatop"].values
-    result = sampler.sample(0.0, SampleContext(default_value=default_value))
+    result = sampler.sample(0.0, SampleContext(default_value=default_value, pft_axis=0))
     np.testing.assert_allclose(result, [0.005, 0.004, 0.008])
 
 
@@ -225,7 +255,7 @@ def test_sample_at_one_pft_returns_max(pft_uniform_row, pft_sheet, default_ds):
     """sample(1.0) returns maximum bounds for PFT-specific bounds."""
     sampler = UniformSampler(pft_uniform_row, pft_sheet=pft_sheet)
     default_value = default_ds["fates_leaf_slatop"].values
-    result = sampler.sample(1.0, SampleContext(default_value=default_value))
+    result = sampler.sample(1.0, SampleContext(default_value=default_value, pft_axis=0))
     np.testing.assert_allclose(result, [0.040, 0.035, 0.060])
 
 
@@ -233,7 +263,7 @@ def test_sample_at_half_pft_returns_midpoint(pft_uniform_row, pft_sheet, default
     """sample(0.5) returns the midpoint of min and max for PFT-specific bounds."""
     sampler = UniformSampler(pft_uniform_row, pft_sheet=pft_sheet)
     default_value = default_ds["fates_leaf_slatop"].values
-    result = sampler.sample(0.5, SampleContext(default_value=default_value))
+    result = sampler.sample(0.5, SampleContext(default_value=default_value, pft_axis=0))
     np.testing.assert_allclose(result, [0.0225, 0.0195, 0.034])
 
 
@@ -313,7 +343,7 @@ def test_normalize_at_min_pft_returns_zero(pft_uniform_row, pft_sheet, default_d
     sampler = UniformSampler(pft_uniform_row, pft_sheet=pft_sheet)
     default_value = default_ds["fates_leaf_slatop"].values
     result = sampler.normalize(
-        [0.005, 0.004, 0.008], SampleContext(default_value=default_value)
+        [0.005, 0.004, 0.008], SampleContext(default_value=default_value, pft_axis=0)
     )
     np.testing.assert_allclose(result, [0.0, 0.0, 0.0])
 
@@ -323,7 +353,7 @@ def test_normalize_at_max_pft_returns_zero(pft_uniform_row, pft_sheet, default_d
     sampler = UniformSampler(pft_uniform_row, pft_sheet=pft_sheet)
     default_value = default_ds["fates_leaf_slatop"].values
     result = sampler.normalize(
-        [0.040, 0.035, 0.060], SampleContext(default_value=default_value)
+        [0.040, 0.035, 0.060], SampleContext(default_value=default_value, pft_axis=0)
     )
     np.testing.assert_allclose(result, [1.0, 1.0, 1.0])
 

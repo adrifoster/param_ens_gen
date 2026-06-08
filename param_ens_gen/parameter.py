@@ -245,12 +245,17 @@ class Parameter(ABC):
         Returns:
             SampleContext populated for this parameter.
         """
+        pft_axis = next(
+            (i for i, dim in enumerate(self.spec.dims) if "pft" in dim.lower()),
+            None,
+        )
         return SampleContext(
             default_value=default_value,
             array_index=(
                 self.active_index.index if self.active_index is not None else None
             ),
             n_indices=self.n_indices,
+            pft_axis=pft_axis,
         )
 
     @abstractmethod

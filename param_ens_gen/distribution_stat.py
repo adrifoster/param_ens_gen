@@ -96,6 +96,7 @@ class DistributionStat(ABC):
         if as_str == "pft":
             if pft_sheet is None:
                 raise ValueError(
+                    f"Parameter '{row.get('parameter_name')}': "
                     f"stat_type='{stat_type}' is 'pft' but no pft_sheet was supplied."
                 )
             return PFTStat.from_sheet(pft_sheet, f"param_{stat_type}")
@@ -146,7 +147,8 @@ class DistributionStat(ABC):
 
     @abstractmethod
     def resolve(
-        self, default_value: float | np.ndarray | None = None
+        self, default_value: float | np.ndarray | None = None,
+        pft_axis: int | None = None
     ) -> float | np.ndarray:
         """Return the concrete stat value.
 
@@ -154,6 +156,7 @@ class DistributionStat(ABC):
             default_value (float | np.ndarray | None, optional): default parameter value.
                 Required for PercentStat; ignored by FixedStat and PFTStat.
                 Defaults to None.
+            pft_axis (int | None, optional): axis that the pft dimension is along. Defaults to None.
 
         Returns:
             float | np.ndarray: min/max value
@@ -171,7 +174,8 @@ class FixedStat(DistributionStat):
 
     value: float
 
-    def resolve(self, default_value: float | np.ndarray | None = None) -> float:
+    def resolve(self, default_value: float | np.ndarray | None = None,
+                pft_axis: int | None = None) -> float:
         """Return the concrete stat value"""
         return self.value
 
@@ -192,7 +196,8 @@ class PercentStat(DistributionStat):
     stat_type: str
 
     def resolve(
-        self, default_value: float | np.ndarray | None = None
+        self, default_value: float | np.ndarray | None = None,
+        pft_axis: int | None = None,
     ) -> float | np.ndarray:
         """Return the concrete stat value."""
         assert self.stat_type != "mean", (
@@ -228,7 +233,8 @@ class PFTStat(DistributionStat):
     values: np.ndarray  # shape: (n_pfts,), dtype: float
     indices: np.ndarray  # 0-based PFT indices these values correspond to
 
-    def resolve(self, default_value: float | np.ndarray | None = None) -> np.ndarray:
+    def resolve(self, default_value: float | np.ndarray | None = None,
+                pft_axis: int | None = None) -> np.ndarray:
         """Return the concrete stat value."""
         if not isinstance(default_value, np.ndarray):
             raise ValueError(
@@ -236,7 +242,20 @@ class PFTStat(DistributionStat):
                 "cannot place per-PFT values without knowing the full parameter shape."
             )
         result = np.array(default_value).copy()
-        result[self.indices] = self.values
+        if result.ndim == 1:
+            result[self.indices] = self.values
+        else:
+            if pft_axis is None:
+                raise ValueError(
+                "PFTStat.resolve() requires pft_axis for multi-dimensional parameters."
+                )
+            idx = [slice(None)] * result.ndim
+            idx[pft_axis] = self.indices
+            
+            # expand values to broadcast across non-pft axes
+            shape = [1] * result.ndim
+            shape[pft_axis] = len(self.values)
+            result[tuple(idx)] = self.values.reshape(shape)
         return result
 
     @classmethod

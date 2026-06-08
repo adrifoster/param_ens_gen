@@ -35,7 +35,7 @@ source-roots = ["."]
 disable = ["redefined-outer-name"]
 
 [tool.pylint."tests/*.py"]
-disable = ["too-many-arguments", "too-many-positional-arguments"]
+disable = ["too-many-arguments", "too-many-positional-arguments", "duplicate-code"]
 
 [tool.black]
 target-version = ["py310", "py311", "py312"]

@@ -390,3 +390,60 @@ def test_pft_stat_resolve_partial_sheet_fills_from_default(default_ds):
     # index 1 (pft_index=2): default
     # index 2 (pft_index=3): sheet value
     np.testing.assert_allclose(result, [0.005, 0.020, 0.008])
+
+
+def test_pft_stat_resolve_2d_pft_axis_0(pft_sheet):
+    """PFTStat.resolve() correctly indexes along axis 0 for 2D arrays."""
+    # shape (3, 2): pft along axis 0
+    default_value = np.array([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]])
+    stat = PFTStat.from_sheet(pft_sheet, "param_min")
+    result = stat.resolve(default_value, pft_axis=0)
+    # all 3 pft rows replaced
+    assert result.shape == (3, 2)
+    np.testing.assert_allclose(result[0, :], [0.005, 0.005])
+    np.testing.assert_allclose(result[1, :], [0.004, 0.004])
+    np.testing.assert_allclose(result[2, :], [0.008, 0.008])
+
+
+def test_pft_stat_resolve_2d_pft_axis_1(pft_sheet):
+    """PFTStat.resolve() correctly indexes along axis 1 for 2D arrays."""
+    # shape (2, 3): pft along axis 1
+    default_value = np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
+    stat = PFTStat.from_sheet(pft_sheet, "param_min")
+    result = stat.resolve(default_value, pft_axis=1)
+    assert result.shape == (2, 3)
+    np.testing.assert_allclose(result[:, 0], [0.005, 0.005])
+    np.testing.assert_allclose(result[:, 1], [0.004, 0.004])
+    np.testing.assert_allclose(result[:, 2], [0.008, 0.008])
+
+
+def test_pft_stat_resolve_2d_partial_sheet_fills_from_default():
+    """PFTStat.resolve() fills missing PFT indices from default for 2D arrays."""
+    partial_sheet = pd.DataFrame(
+        {
+            "pft_index": [1, 3],
+            "pft_name": ["white_spruce", "deciduous"],
+            "param_min": [0.005, 0.008],
+            "param_max": [0.040, 0.060],
+        }
+    )
+    stat = PFTStat.from_sheet(partial_sheet, "param_min")
+    default_value = np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
+    result = stat.resolve(default_value, pft_axis=1)
+    # pft index 0 (pft_index=1): sheet value
+    # pft index 1 (pft_index=2): default
+    # pft index 2 (pft_index=3): sheet value
+    np.testing.assert_allclose(result[:, 0], [0.005, 0.005])
+    np.testing.assert_allclose(result[:, 1], [2.0, 5.0])  # default
+    np.testing.assert_allclose(result[:, 2], [0.008, 0.008])
+
+
+def test_pft_stat_resolve_2d_missing_pft_axis_raises():
+    """PFTStat.resolve() raises ValueError for 2D array without pft_axis."""
+    stat = PFTStat(
+        values=np.array([0.005, 0.004, 0.008]),
+        indices=np.array([0, 1, 2]),
+    )
+    default_value = np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
+    with pytest.raises(ValueError, match="pft_axis"):
+        stat.resolve(default_value, pft_axis=None)
