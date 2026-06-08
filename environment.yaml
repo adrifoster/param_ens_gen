@@ -13,6 +13,7 @@ dependencies:
   - ipykernel
   - pip
   - tqdm
+  - netcdf4
   # --- dev / test ---
   - black
   - pylint

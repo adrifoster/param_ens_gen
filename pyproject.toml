@@ -13,6 +13,7 @@ dependencies = [
 "pandas",
 "pyyaml",
 "tqdm",
+"netcdf4",
 ]
  
 [project.optional-dependencies]

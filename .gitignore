@@ -25,3 +25,7 @@ htmlcov/
 
 # OS
 .DS_Store
+
+output_LH/
+output_OAT
+
