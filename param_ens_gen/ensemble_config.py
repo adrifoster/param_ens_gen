@@ -41,10 +41,10 @@ class EnsembleConfig:
         parameters are expected.
     """
 
-    param_dir: Path
-    ensemble_dir: Path
+    param_dir: str | Path
+    ensemble_dir: str | Path
     file_prefix: str
-    default_param_file: Path
+    default_param_file: str | Path
     param_list: Optional[list[str]] = None
     fixed_indices: Optional[dict[str, list[int]]] = None
     posterior_sources: Optional[Path] = None

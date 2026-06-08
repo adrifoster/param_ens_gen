@@ -13,11 +13,7 @@ from param_ens_gen.param_spec import ParamSpec, _REQUIRED_COLUMNS, _parse_dims
 
 
 def test_from_row_default(default_row):
-    """from_row correctly constructs a default parameter.
-
-    Args:
-        default_row (pd.Series): fixture
-    """
+    """from_row correctly constructs a default parameter."""
     spec = ParamSpec.from_row(default_row)
     assert spec.name == "fates_leaf_slatop"
     assert spec.param_type == "default"
@@ -139,6 +135,7 @@ def test_from_row_base_params_parsed_from_plain_string(scale_from_root_row):
     ],
 )
 def test_from_row_slice_index_valid(sliced_row, value, expected_slice_index):
+    """from_row with a slice index is valid"""
     row = sliced_row.copy()
     row["slice_index"] = value
     result = ParamSpec.from_row(row)
@@ -147,6 +144,7 @@ def test_from_row_slice_index_valid(sliced_row, value, expected_slice_index):
 
 @pytest.mark.parametrize("value", ["abc", "3.7"])
 def test_from_row_slice_index_raises(sliced_row, value):
+    """from_row raises for invalid values for slice_index"""
     row = sliced_row.copy()
     row["slice_index"] = value
     with pytest.raises(ValueError, match="slice_index"):
@@ -164,6 +162,7 @@ def test_from_row_slice_index_raises(sliced_row, value):
     ],
 )
 def test_parse_dims_raises(value, match):
+    """_parse_dims raises for invalid values"""
     with pytest.raises(ValueError, match=match):
         _parse_dims(value)
 
@@ -181,6 +180,7 @@ def test_parse_dims_raises(value, match):
     ],
 )
 def test_parse_dims_valid(value, expected):
+    """_parse_dims works for valid values"""
     assert _parse_dims(value) == expected
 
 
@@ -198,6 +198,7 @@ def test_parse_dims_valid(value, expected):
     ],
 )
 def test_from_row_parse_list(sliced_row, value, expected_base_params):
+    """from_row works for valid values for base_params"""
     row = sliced_row.copy()
     row["base_params"] = value
     result = ParamSpec.from_row(row)
@@ -206,6 +207,7 @@ def test_from_row_parse_list(sliced_row, value, expected_base_params):
 
 @pytest.mark.parametrize("value", [42, [], True])
 def test_parse_list_bad_type_raises(sliced_row, value):
+    """from_row raises for bad values for base_params"""
     row = sliced_row.copy()
     row["base_params"] = value
     with pytest.raises(ValueError, match="unexpected type"):

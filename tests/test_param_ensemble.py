@@ -22,6 +22,7 @@ from param_ens_gen.parameter import DimIndex, Parameter
 def test_from_dict_missing_ensemble_type(
     ensemble_param_dir, default_param_file, tmp_path, posterior_config_file
 ):
+    """Test that from_dict raises if the ensemble dictionary is missing the ensemble type"""
     with pytest.raises(ValueError, match="ensemble_type.*required"):
         ParamEnsemble.from_dict(
             {
@@ -37,6 +38,7 @@ def test_from_dict_missing_ensemble_type(
 def test_from_dict_unknown_ensemble_type(
     ensemble_param_dir, default_param_file, tmp_path, posterior_config_file
 ):
+    """Test that from_dict raises if the ensemble dictionary has an unknown ensemble type"""
     with pytest.raises(ValueError, match="Unknown ensemble_type"):
         ParamEnsemble.from_dict(
             {
@@ -53,6 +55,7 @@ def test_from_dict_unknown_ensemble_type(
 def test_from_dict_bad_key(
     ensemble_param_dir, default_param_file, tmp_path, posterior_config_file
 ):
+    """Test that from_dict raises if the ensemble dictionary has an invalid key"""
     with pytest.raises(TypeError, match="Invalid config key"):
         ParamEnsemble.from_dict(
             {
@@ -70,6 +73,7 @@ def test_from_dict_bad_key(
 def test_from_dict_valid_latin_hypercube(
     ensemble_param_dir, default_param_file, tmp_path, posterior_config_file
 ):
+    """Test that from_dict cab create a LatinHypercubeEnsemble class from a valid dict"""
     ensemble = ParamEnsemble.from_dict(
         {
             "ensemble_type": "LatinHypercube",
@@ -87,6 +91,7 @@ def test_from_dict_valid_latin_hypercube(
 def test_from_dict_valid_oat(
     ensemble_param_dir, default_param_file, tmp_path, posterior_config_file
 ):
+    """Test that from_dict cab create a OneAtATime class from a valid dict"""
     ensemble = ParamEnsemble.from_dict(
         {
             "ensemble_type": "OAT",
@@ -103,6 +108,7 @@ def test_from_dict_valid_oat(
 def test_from_dict_invalid_oat(
     ensemble_param_dir, default_param_file, tmp_path, posterior_config_file
 ):
+    """Test that from_dict raises if you have ensemble_members in a OAT dict"""
     with pytest.raises(TypeError, match="Invalid config key"):
         ParamEnsemble.from_dict(
             {
@@ -120,6 +126,7 @@ def test_from_dict_invalid_oat(
 def test_from_dict_valid_latin_hypercube_creates_ensemble_dir(
     ensemble_param_dir, default_param_file, tmp_path, posterior_config_file
 ):
+    """Test that from_dict creates the ensemble_dir"""
     ensemble = ParamEnsemble.from_dict(
         {
             "ensemble_type": "LatinHypercube",
@@ -138,6 +145,7 @@ def test_from_dict_valid_latin_hypercube_creates_ensemble_dir(
 def test_from_dict_valid_latin_hypercube_correctly_sets_attributes(
     ensemble_param_dir, default_param_file, tmp_path, posterior_config_file
 ):
+    """Test that from_dict correctly sets attributes"""
     ensemble = ParamEnsemble.from_dict(
         {
             "ensemble_type": "LatinHypercube",
@@ -158,6 +166,7 @@ def test_from_dict_valid_latin_hypercube_correctly_sets_attributes(
 def test_from_dict_valid_latin_hypercube_fixed_indices_empty_if_unset(
     ensemble_param_dir, default_param_file, tmp_path, posterior_config_file
 ):
+    """Test that from_dict sets fixed_indices to an empty dict if it is unset"""
     ensemble = ParamEnsemble.from_dict(
         {
             "ensemble_type": "LatinHypercube",
@@ -175,6 +184,7 @@ def test_from_dict_valid_latin_hypercube_fixed_indices_empty_if_unset(
 def test_param_list_unknown_parameter_raises(
     ensemble_param_dir, default_param_file, tmp_path, posterior_config_file
 ):
+    """Test that from_dict raises if there is a parameter in param_list not in main.csv"""
     config = LatinHypercubeConfig(
         param_dir=ensemble_param_dir,
         ensemble_dir=tmp_path / "ensemble",
@@ -190,6 +200,7 @@ def test_param_list_unknown_parameter_raises(
 def test_missing_default_param_file_raises(
     ensemble_param_dir, tmp_path, posterior_config_file
 ):
+    """Test that from_dict raises if it can't find the default parameter file"""
     config = LatinHypercubeConfig(
         param_dir=ensemble_param_dir,
         ensemble_dir=tmp_path / "ensemble",
@@ -204,6 +215,7 @@ def test_missing_default_param_file_raises(
 def test_missing_posterior_sources_file_raises(
     ensemble_param_dir, tmp_path, default_param_file
 ):
+    """Test that from_dict raises if it can't find the posterior sources file"""
     config = LatinHypercubeConfig(
         param_dir=ensemble_param_dir,
         ensemble_dir=tmp_path / "ensemble",
@@ -218,6 +230,7 @@ def test_missing_posterior_sources_file_raises(
 def test_from_dict_params_correct(
     ensemble_param_dir, default_param_file, tmp_path, posterior_config_file
 ):
+    """Test that from_dict correctly reads in a list of parameters"""
     ensemble = ParamEnsemble.from_dict(
         {
             "ensemble_type": "LatinHypercube",
@@ -235,6 +248,7 @@ def test_from_dict_params_correct(
 def test_from_dict_param_list_subsets_correctly(
     ensemble_param_dir, default_param_file, tmp_path, posterior_config_file
 ):
+    """Test that from_dict correctly subsets the parameters with param_list"""
     param_list = ["fates_leaf_slatop", "fates_leaf_vcmax25top"]
     ensemble = ParamEnsemble.from_dict(
         {
@@ -254,12 +268,12 @@ def test_from_dict_param_list_subsets_correctly(
 
 
 def test_ensemble_params_types(lh_ensemble):
-    """All params are Parameter instances."""
+    """Test that all params are Parameter instances."""
     assert all(isinstance(p, Parameter) for p in lh_ensemble.params)
 
 
 def test_ensemble_params_names(lh_ensemble, tmp_path):
-    """Parameter names match what's in main.csv."""
+    """Test that parameter names match what's in main.csv."""
     param_data = pd.read_csv(tmp_path / "main.csv")
     param_names = param_data.parameter_name.unique()
     names = [p.spec.name for p in lh_ensemble.params]
@@ -269,7 +283,7 @@ def test_ensemble_params_names(lh_ensemble, tmp_path):
 def test_sort_params_root_before_dependent(
     ensemble_param_dir, default_param_file, posterior_config_file, tmp_path
 ):
-    """sort_params ensures root parameter is written before scale_from_root dependent."""
+    """Test that sort_params ensures root parameter is written before scale_from_root dependent."""
     config = LatinHypercubeConfig(
         param_dir=ensemble_param_dir,
         ensemble_dir=tmp_path / "ensemble",
@@ -285,7 +299,7 @@ def test_sort_params_root_before_dependent(
 def test_fixed_indices_invalid_dimension_raises(
     ensemble_param_dir, default_param_file, posterior_config_file, tmp_path
 ):
-    """fixed_indices with an unknown dimension raises ValueError."""
+    """Test that fixed_indices with an unknown dimension raises ValueError."""
     config = LatinHypercubeConfig(
         param_dir=ensemble_param_dir,
         ensemble_dir=tmp_path / "ensemble",
@@ -301,7 +315,7 @@ def test_fixed_indices_invalid_dimension_raises(
 def test_fixed_indices_out_of_range_raises(
     ensemble_param_dir, default_param_file, posterior_config_file, tmp_path
 ):
-    """fixed_indices with out-of-range indices raises ValueError."""
+    """Test that fixed_indices with out-of-range indices raises ValueError."""
     config = LatinHypercubeConfig(
         param_dir=ensemble_param_dir,
         ensemble_dir=tmp_path / "ensemble",
@@ -317,7 +331,7 @@ def test_fixed_indices_out_of_range_raises(
 def test_fixed_indices_valid(
     ensemble_param_dir, default_param_file, posterior_config_file, tmp_path
 ):
-    """Valid fixed_indices constructs successfully."""
+    """Test that valid fixed_indices constructs successfully."""
     config = LatinHypercubeConfig(
         param_dir=ensemble_param_dir,
         ensemble_dir=tmp_path / "ensemble",
@@ -333,6 +347,7 @@ def test_fixed_indices_valid(
 def test_fixed_indices_negative_index_raises(
     ensemble_param_dir, default_param_file, posterior_config_file, tmp_path
 ):
+    """Test that fixed_indices with out of range indices raises"""
     config = LatinHypercubeConfig(
         param_dir=ensemble_param_dir,
         ensemble_dir=tmp_path / "ensemble",
@@ -346,41 +361,48 @@ def test_fixed_indices_negative_index_raises(
 
 
 def test_build_lh_shape(lh_ensemble):
+    """Test that build_lh builds a Latin Hypercube with the correct shape"""
     lh = lh_ensemble.build_lh()
     assert lh.shape == (5, lh_ensemble.num_params)
     assert np.all(lh >= 0.0) and np.all(lh <= 1.0)
 
 
 def test_build_lh_prebuilt(lh_ensemble):
+    """Test that build_lh with a correct pre-built LH returns that pre-built array"""
     prebuilt = np.random.default_rng(0).random((5, lh_ensemble.num_params))
     lh = lh_ensemble.build_lh(prebuilt=prebuilt)
     np.testing.assert_array_equal(lh, prebuilt)
 
 
 def test_build_lh_prebuilt_wrong_samples(lh_ensemble):
+    """Test that build_lh given an incorrect (wrong num samples) pre-built LH raises"""
     bad = np.random.default_rng(0).random((10, lh_ensemble.num_params))
     with pytest.raises(ValueError, match="shape"):
         lh_ensemble.build_lh(prebuilt=bad)
 
 
 def test_build_lh_prebuilt_wrong_params(lh_ensemble):
+    """Test that build_lh given an incorrect (wrong num parameters) pre-built LH raises"""
     bad = np.random.default_rng(0).random((5, 10))
     with pytest.raises(ValueError, match="shape"):
         lh_ensemble.build_lh(prebuilt=bad)
 
 
 def test_build_lh_zero_params(lh_ensemble):
+    """Test that build_lh with zero params returns something"""
     lh_ensemble.num_params = 0
     lh = lh_ensemble.build_lh()
     assert lh.shape == (5, 0)
 
 
 def test_lh_create_samples_length(lh_ensemble):
+    """Test that create_samples returns the correct number of samples"""
     samples = lh_ensemble.create_samples()
     assert len(samples) == 5
 
 
 def test_lh_create_samples_structure(lh_ensemble):
+    """Test that create_samples returns the correct structure"""
     samples = lh_ensemble.create_samples()
     for sample in samples:
         assert len(sample) == lh_ensemble.num_params
@@ -389,25 +411,27 @@ def test_lh_create_samples_structure(lh_ensemble):
 
 
 def test_oat_create_samples_length(oat_ensemble):
-    """OAT produces 2 samples per parameter (min and max)."""
+    """Test that OAT produces 2 samples per parameter (min and max)."""
     samples = oat_ensemble.create_samples()
     assert len(samples) == 2 * oat_ensemble.num_params
 
 
 def test_oat_create_samples_values(oat_ensemble):
-    """OAT samples are always 0.0 or 1.0."""
+    """Test that OAT samples are always 0.0 or 1.0."""
     samples = oat_ensemble.create_samples()
     values = [s.parameter_samples[0].normalized_value for s in samples]
     assert set(values) == {0.0, 1.0}
 
 
 def test_lh_create_ensemble_member(lh_ensemble):
+    """Test that create_ensemble_member works for a LH ensemble"""
     samples = lh_ensemble.create_samples()
     ds = lh_ensemble.create_ensemble_member(samples[0])
     assert "fates_leaf_slatop" in ds
 
 
 def test_oat_create_ensemble_member(oat_ensemble):
+    """Test that create_ensemble_member works for a OAT ensemble"""
     samples = oat_ensemble.create_samples()
     ds = oat_ensemble.create_ensemble_member(samples[0])
     assert "fates_leaf_slatop" in ds
@@ -421,6 +445,7 @@ def test_oat_create_ensemble_member_wrong_length(oat_ensemble, lh_ensemble):
 
 
 def test_lh_create_ensemble_key(lh_ensemble):
+    """Test that create_ensemble_key works for an LH ensemble"""
     samples = lh_ensemble.create_samples()
     key = lh_ensemble.create_ensemble_key(samples)
     assert "ensemble" in key.columns
@@ -428,6 +453,7 @@ def test_lh_create_ensemble_key(lh_ensemble):
 
 
 def test_oat_create_ensemble_key(oat_ensemble):
+    """Test that create_ensemble_key works for an OAT ensemble"""
     samples = oat_ensemble.create_samples()
     key = oat_ensemble.create_ensemble_key(samples)
     assert "ensemble" in key.columns
@@ -436,14 +462,14 @@ def test_oat_create_ensemble_key(oat_ensemble):
 
 
 def test_oat_create_ensemble_key_wrong_length_raises(oat_ensemble, lh_ensemble):
-    """create_ensemble_key raises if any sample has more than one ParameterSample."""
+    """Test that create_ensemble_key raises if any sample has more than one ParameterSample."""
     lh_samples = lh_ensemble.create_samples()
     with pytest.raises(ValueError, match="exactly one"):
         oat_ensemble.create_ensemble_key(lh_samples)
 
 
 def test_oat_create_ensemble_key_bad_direction_raises(oat_ensemble):
-    """create_ensemble_key raises if normalized_value is not 0.0 or 1.0."""
+    """Test that create_ensemble_key raises if normalized_value is not 0.0 or 1.0."""
     param = oat_ensemble.params[0]
     bad_sample = EnsembleMemberSample([ParameterSample(param, 0.5)])
     with pytest.raises(ValueError, match="expects only 0.0 or 1.0"):
@@ -451,6 +477,7 @@ def test_oat_create_ensemble_key_bad_direction_raises(oat_ensemble):
 
 
 def test_create_ensemble_writes_files(lh_ensemble):
+    """Test that create_ensemble writes all the files we require"""
     lh_ensemble.create_ensemble()
     output_files = list(lh_ensemble.ensemble_dir.glob("test_*.nc"))
     assert len(output_files) == 5
@@ -461,13 +488,13 @@ def test_create_ensemble_writes_files(lh_ensemble):
 
 
 def test_expand_params_count(lh_expand_ensemble):
-    """Expandable param over N_PFTS=3 produces 3 clones; scalar passes through."""
+    """Test that expandable param over N_PFTS=3 produces 3 clones; scalar passes through."""
     # 3 expanded copies of fates_leaf_slatop + 1 scalar = 4 total
     assert len(lh_expand_ensemble.params) == 4
 
 
 def test_expand_params_names(lh_expand_ensemble):
-    """Expanded params are named with index suffix; non-expanded is unchanged."""
+    """Test that expanded params are named with index suffix; non-expanded is unchanged."""
     names = [p.spec.name for p in lh_expand_ensemble.params]
     assert "fates_leaf_slatop_0" in names
     assert "fates_leaf_slatop_1" in names
@@ -476,8 +503,7 @@ def test_expand_params_names(lh_expand_ensemble):
 
 
 def test_expand_params_active_index_set(lh_expand_ensemble):
-    """Expanded params have active_index set to the correct dim and index."""
-
+    """Test that expanded params have active_index set to the correct dim and index."""
     expanded = [p for p in lh_expand_ensemble.params if p.active_index is not None]
     assert len(expanded) == 3
     indices = {p.active_index for p in expanded}
@@ -489,7 +515,7 @@ def test_expand_params_active_index_set(lh_expand_ensemble):
 
 
 def test_expand_params_non_expanded_has_no_active_index(lh_expand_ensemble):
-    """Non-expanded params have active_index=None."""
+    """Test that non-expanded params have active_index=None."""
     scalar = next(
         p
         for p in lh_expand_ensemble.params
@@ -499,7 +525,7 @@ def test_expand_params_non_expanded_has_no_active_index(lh_expand_ensemble):
 
 
 def test_expand_params_spec_not_shared(lh_expand_ensemble):
-    """Each expanded clone has its own spec instance."""
+    """Test that each expanded clone has its own spec instance."""
     expanded = [p for p in lh_expand_ensemble.params if p.active_index is not None]
     specs = [id(p.spec) for p in expanded]
     assert len(specs) == len(set(specs))
@@ -508,7 +534,7 @@ def test_expand_params_spec_not_shared(lh_expand_ensemble):
 def test_expand_params_fixed_indices_excluded(
     expand_param_dir, default_param_file, tmp_path
 ):
-    """Indices listed in fixed_indices are not expanded into."""
+    """Test that indices listed in fixed_indices are not expanded into."""
     config = LatinHypercubeConfig(
         param_dir=expand_param_dir,
         ensemble_dir=tmp_path / "ensemble",
@@ -525,7 +551,7 @@ def test_expand_params_fixed_indices_excluded(
 
 
 def test_expand_params_unknown_expand_dim_raises(tmp_path, default_param_file):
-    """expand_dim referencing a dimension not in default_ds raises ValueError."""
+    """Test that expand_dim referencing a dimension not in default_ds raises ValueError."""
     pd.DataFrame(
         [
             {

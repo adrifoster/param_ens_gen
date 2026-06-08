@@ -2,7 +2,6 @@
 
 from pathlib import Path
 import numpy as np
-import pytest
 from param_ens_gen.ensemble_config import (
     EnsembleConfig,
     LatinHypercubeConfig,
