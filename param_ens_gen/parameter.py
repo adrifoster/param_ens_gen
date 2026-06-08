@@ -283,6 +283,7 @@ class Parameter(ABC):
             fixed_indices (dict[str, list[int]] | None): Run-level mapping of dimension to
                 0-based indices to hold at default. None means no indices are fixed
         """
+        value = self._apply_precision(value)
         if self.active_index is not None:
             self._write_at_index(ds, self.active_index, value)
         else:
@@ -345,6 +346,24 @@ class Parameter(ABC):
         clone.spec = copy.copy(self.spec)
         clone.spec.name = f"{self.spec.name}_{index}"
         return clone
+
+    def _apply_precision(
+        self, value: float | np.ndarray | list[np.ndarray]
+    ) -> float | np.ndarray | list[np.ndarray]:
+        """Round value to the precision specified in spec.precision.
+
+        Args:
+            value: Sampled value to round.
+
+        Returns:
+            Rounded value, or value unchanged if precision is None.
+        """
+        if self.spec.precision is None:
+            return value
+        decimals = int(self.spec.precision[1:-1])  # '.4f' means 4 decimals
+        if isinstance(value, list):
+            return [np.round(v, decimals) for v in value]
+        return np.round(value, decimals)
 
 
 # ----------------------------------------------------------------------------------------

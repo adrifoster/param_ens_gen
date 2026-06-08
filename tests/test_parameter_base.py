@@ -381,6 +381,65 @@ def test_set_value_none_fixed_indices_becomes_empty_dict(
     assert received["fixed_indices"] == {}
 
 
+def test_set_value_applies_precision(default_row, default_ds, working_ds):
+    """set_value rounds the value to the specified precision before writing."""
+    default_row["precision"] = ".2f"
+    param = Parameter.from_row(default_row, default_ds)
+    param.set_value(working_ds, default_ds, 0.123456)
+    result = working_ds["fates_leaf_slatop"].values
+    assert result[0] == pytest.approx(0.12)
+
+
+def test_set_value_no_precision_unchanged(default_row, default_ds, working_ds):
+    """set_value does not round when precision is None."""
+    param = Parameter.from_row(default_row, default_ds)
+    param.set_value(working_ds, default_ds, 0.123456)
+    result = working_ds["fates_leaf_slatop"].values
+    assert result[0] == pytest.approx(0.123456)
+
+
+def test_set_value_precision_applied_to_array(default_row, default_ds, working_ds):
+    """set_value rounds array values to the specified precision."""
+    default_row["precision"] = ".3f"
+    param = Parameter.from_row(default_row, default_ds)
+    param.set_value(working_ds, default_ds, np.array([0.12345, 0.23456, 0.34567]))
+    np.testing.assert_allclose(
+        working_ds["fates_leaf_slatop"].values, [0.123, 0.235, 0.346]
+    )
+
+
+def test_set_value_precision_applied_with_active_index(
+    default_row, default_ds, working_ds
+):
+    """set_value rounds correctly when active_index is set."""
+    default_row["precision"] = ".2f"
+    param = Parameter.from_row(default_row, default_ds)
+    param.active_index = DimIndex("fates_pft", 1)
+    param.set_value(working_ds, default_ds, 0.123456)
+    assert working_ds["fates_leaf_slatop"].values[1] == pytest.approx(0.12)
+
+
+def test_set_value_precision_applied_to_joint_list(
+    joint_param_row, default_ds, working_ds, posterior_config
+):
+    """set_value rounds list values for joint parameters."""
+    joint_param_row["precision"] = ".2f"
+    param = Parameter.from_row(
+        joint_param_row, default_ds, posterior_config=posterior_config
+    )
+    param.set_value(
+        working_ds,
+        default_ds,
+        [np.array([0.12345, 0.23456, 0.34567]), np.array([2.1234, 2.5678, 2.9999])],
+    )
+    np.testing.assert_allclose(
+        working_ds["fates_leafn_vert_scaler_coeff1"].values, [0.12, 0.23, 0.35]
+    )
+    np.testing.assert_allclose(
+        working_ds["fates_leafn_vert_scaler_coeff2"].values, [2.12, 2.57, 3.00]
+    )
+
+
 # =============================================================================
 # Sample
 # =============================================================================

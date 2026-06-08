@@ -214,6 +214,34 @@ def test_parse_list_bad_type_raises(sliced_row, value):
         ParamSpec.from_row(row)
 
 
+def test_from_row_precision_parsed(default_row):
+    """from_row correctly parses a precision string."""
+    default_row["precision"] = ".4f"
+    spec = ParamSpec.from_row(default_row)
+    assert spec.precision == ".4f"
+
+
+def test_from_row_precision_none_when_missing(default_row):
+    """from_row sets precision to None when the cell is missing."""
+    spec = ParamSpec.from_row(default_row)
+    assert spec.precision is None
+
+
+@pytest.mark.parametrize("value", [None, float("nan"), ""])
+def test_from_row_precision_none_for_blank(default_row, value):
+    """from_row sets precision to None for blank/null values."""
+    default_row["precision"] = value
+    spec = ParamSpec.from_row(default_row)
+    assert spec.precision is None
+
+
+def test_from_row_precision_normalizes_leading_zero(default_row):
+    """from_row normalizes '0.2f' to '.2f'."""
+    default_row["precision"] = "0.2f"
+    spec = ParamSpec.from_row(default_row)
+    assert spec.precision == ".2f"
+
+
 # ===========================================================================
 # ParamSpec.__post_init__: field-level invariants
 #

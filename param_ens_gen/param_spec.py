@@ -58,6 +58,8 @@ class ParamSpec:  # pylint: disable=too-many-instance-attributes
     root_param: str | None
         For 'scale_from_root' param_type: the parameter to scale from
         None for all other types.
+    prcision: str | None
+        The precision (i.e., rounding) for the parameter. Defaults to None.
     """
 
     name: str
@@ -72,6 +74,7 @@ class ParamSpec:  # pylint: disable=too-many-instance-attributes
     slice_index: Optional[int]
     root_param: Optional[str]
     base_params: list[str]
+    precision: Optional[str]
 
     def __post_init__(self):
         """Validate field-level invariants that hold regardless of param_type.
@@ -134,6 +137,7 @@ class ParamSpec:  # pylint: disable=too-many-instance-attributes
             slice_index=_parse_optional_int(row.get("slice_index")),
             base_params=_parse_list(row.get("base_params", "")),
             root_param=_parse_optional_str(row.get("root_param")),
+            precision=_parse_precision(row.get("precision")),
         )
 
 
@@ -262,3 +266,23 @@ def _parse_optional_str(value: str | None) -> Optional[str]:
         return None
     s = str(value).strip()
     return s if s else None
+
+
+def _parse_precision(value: str | None) -> Optional[str]:
+    """Parse a precision string like '.2f' or '0.2f' into a normalized '.Nf' string.
+
+    Args:
+        value (str | None): Raw precision cell value.
+
+    Returns:
+        Optional[str]: Normalized precision string, or None if blank/null.
+    """
+    if value is None or (isinstance(value, float) and _is_nan(value)):
+        return None
+    s = str(value).strip()
+    if not s:
+        return None
+    # normalize '0.2f' to '.2f'
+    if s.startswith("0."):
+        s = s[1:]
+    return s
