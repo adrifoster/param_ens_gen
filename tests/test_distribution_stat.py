@@ -295,15 +295,10 @@ def test_pft_stat_from_sheet_missing_column_raises():
         PFTStat.from_sheet(bad_sheet, "param_min")
 
 
-def test_pft_stat_resolve_returns_values(pft_sheet):
+def test_pft_stat_resolve_returns_values(pft_sheet, default_ds):
     """PFTStat.resolve() returns the stored values array."""
     stat = PFTStat.from_sheet(pft_sheet, "param_min")
-    result = stat.resolve()
+    default_value = default_ds['fates_leaf_slatop'].values
+    result = stat.resolve(default_value)
     np.testing.assert_allclose(result, stat.values)
 
-
-def test_pft_stat_resolve_ignores_default_value(pft_sheet):
-    """PFTStat.resolve() ignores any default_value passed to it."""
-    stat = PFTStat.from_sheet(pft_sheet, "param_min")
-    result = stat.resolve(default_value=np.array([99.0, 99.0, 99.0]))
-    np.testing.assert_allclose(result, stat.values)
