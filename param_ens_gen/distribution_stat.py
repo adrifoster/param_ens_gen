@@ -147,8 +147,9 @@ class DistributionStat(ABC):
 
     @abstractmethod
     def resolve(
-        self, default_value: float | np.ndarray | None = None,
-        pft_axis: int | None = None
+        self,
+        default_value: float | np.ndarray | None = None,
+        pft_axis: int | None = None,
     ) -> float | np.ndarray:
         """Return the concrete stat value.
 
@@ -174,8 +175,11 @@ class FixedStat(DistributionStat):
 
     value: float
 
-    def resolve(self, default_value: float | np.ndarray | None = None,
-                pft_axis: int | None = None) -> float:
+    def resolve(
+        self,
+        default_value: float | np.ndarray | None = None,
+        pft_axis: int | None = None,
+    ) -> float:
         """Return the concrete stat value"""
         return self.value
 
@@ -196,7 +200,8 @@ class PercentStat(DistributionStat):
     stat_type: str
 
     def resolve(
-        self, default_value: float | np.ndarray | None = None,
+        self,
+        default_value: float | np.ndarray | None = None,
         pft_axis: int | None = None,
     ) -> float | np.ndarray:
         """Return the concrete stat value."""
@@ -233,8 +238,11 @@ class PFTStat(DistributionStat):
     values: np.ndarray  # shape: (n_pfts,), dtype: float
     indices: np.ndarray  # 0-based PFT indices these values correspond to
 
-    def resolve(self, default_value: float | np.ndarray | None = None,
-                pft_axis: int | None = None) -> np.ndarray:
+    def resolve(
+        self,
+        default_value: float | np.ndarray | None = None,
+        pft_axis: int | None = None,
+    ) -> np.ndarray:
         """Return the concrete stat value."""
         if not isinstance(default_value, np.ndarray):
             raise ValueError(
@@ -247,11 +255,11 @@ class PFTStat(DistributionStat):
         else:
             if pft_axis is None:
                 raise ValueError(
-                "PFTStat.resolve() requires pft_axis for multi-dimensional parameters."
+                    "PFTStat.resolve() requires pft_axis for multi-dimensional parameters."
                 )
             idx = [slice(None)] * result.ndim
             idx[pft_axis] = self.indices
-            
+
             # expand values to broadcast across non-pft axes
             shape = [1] * result.ndim
             shape[pft_axis] = len(self.values)

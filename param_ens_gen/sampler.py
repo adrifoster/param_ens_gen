@@ -49,7 +49,7 @@ class SampleContext:
     default_value: float | np.ndarray | list[np.ndarray] | None = None
     array_index: int | None = None
     n_indices: list[int] | None = None
-    pft_axis: int | None = None 
+    pft_axis: int | None = None
 
 
 class Sampler(ABC):
