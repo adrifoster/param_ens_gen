@@ -371,7 +371,9 @@ def test_set_value_none_fixed_indices_becomes_empty_dict(
     """fixed is set to an empty dict when it is None"""
     received = {}
 
-    def capture(ds, default_ds, value, fixed_indices): # pylint: disable=unused-argument
+    def capture(
+        ds, default_ds, value, fixed_indices
+    ):  # pylint: disable=unused-argument
         received["fixed_indices"] = fixed_indices
 
     monkeypatch.setattr(default_param, "_write_full", capture)
@@ -382,6 +384,7 @@ def test_set_value_none_fixed_indices_becomes_empty_dict(
 # =============================================================================
 # Sample
 # =============================================================================
+
 
 def test_sample_passes_active_index_to_context(default_param, default_ds, mocker):
     """sample() passes active_index through to the SampleContext."""
