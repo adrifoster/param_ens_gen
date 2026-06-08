@@ -34,6 +34,9 @@ source-roots = ["."]
 [tool.pylint."tests/conftest.py"]
 disable = ["redefined-outer-name"]
 
+[tool.pylint."tests/*.py"]
+disable = ["too-many-arguments", "too-many-positional-arguments"]
+
 [tool.black]
 target-version = ["py310", "py311", "py312"]
 line-length = 88
