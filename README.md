@@ -126,9 +126,9 @@ ensemble.create_ensemble()
 This produces two files per parameter (one at minimum value, one at maximum), plus a key file with a `direction` column indicating `minimum` or `maximum` and a text file `my_ensemble.txt` listing
 all member names.
 
-### As a CLI (coming soon)
+### As a CLI
 
-A command-line interface is planned. It will allow you to run the ensemble generator from a YAML config file without writing any Python:
+You can also run the ensemble generator from a YAML config file without writing any Python:
 
 ```bash
 param_ens_gen run config.yaml
