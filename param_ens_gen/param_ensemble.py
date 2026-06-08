@@ -12,8 +12,8 @@ import yaml
 import pandas as pd
 import numpy as np
 from scipy.stats import qmc
-import xarray as xr
 
+from .parameter_dataset import ParameterDataset
 from .parameter import Parameter
 from .ensemble_config import EnsembleConfig, LatinHypercubeConfig, OneAtATimeConfig
 from .sort_params import sort_params
@@ -68,7 +68,7 @@ class ParamEnsemble(ABC):
         Path to where parameter files will be written out
     file_prefix: str
         Prefix for output filenames, e.g. 'my_ensemble' produces 'my_ensemble_0001.nc', etc.
-    default_ds: xr.DataFrame
+    default_ds: ParameterDataset
         Default parameter dataset. Used as the base for all ensemble
         members and for parameter validation at construction time.
     params: list[Parameter]
@@ -118,7 +118,7 @@ class ParamEnsemble(ABC):
             raise FileNotFoundError(
                 f"Default parameter file '{config.default_param_file}' does not exist."
             )
-        self.default_ds = xr.open_dataset(config.default_param_file)
+        self.default_ds = ParameterDataset.from_path(config.default_param_file)
 
         if config.posterior_sources:
             if not config.posterior_sources.exists():
@@ -215,7 +215,7 @@ class ParamEnsemble(ABC):
         for i, sample in tqdm(enumerate(samples), total=len(samples), unit="member"):
             ds = self.create_ensemble_member(sample)
             file_name = f"{self.file_prefix}_{_generate_suffix(i)}.nc"
-            ds.to_netcdf(self.ensemble_dir / file_name)
+            ds.save(self.ensemble_dir / file_name)
             ds.close()
 
         ensemble_key = self.create_ensemble_key(samples)
@@ -255,14 +255,14 @@ class ParamEnsemble(ABC):
         """
 
     @abstractmethod
-    def create_ensemble_member(self, sample: EnsembleMemberSample) -> xr.Dataset:
+    def create_ensemble_member(self, sample: EnsembleMemberSample) -> ParameterDataset:
         """Create one member of the ensemble
 
         Args:
             sample (EnsembleMemberSample): Parameter samples for this member.
                 Contains one ParameterSample per parameter.
         Returns:
-            xr.Dataset: one member of the ensemble with updated values from default
+            ParameterDataset: one member of the ensemble with updated values from default
         """
 
     @abstractmethod
@@ -372,17 +372,17 @@ class LatinHypercubeEnsemble(ParamEnsemble, ensemble_type="LatinHypercube"):
 
         return samples
 
-    def create_ensemble_member(self, sample: EnsembleMemberSample) -> xr.Dataset:
+    def create_ensemble_member(self, sample: EnsembleMemberSample) -> ParameterDataset:
         """Create one member of the ensemble
 
         Args:
             sample (EnsembleMemberSample): Parameter samples for this member.
                 Contains one ParameterSample per parameter.
         Returns:
-            xr.Dataset: one member of the ensemble with updated values from default
+            ParameterDataset: one member of the ensemble with updated values from default
         """
 
-        ds = self.default_ds.copy(deep=False)
+        ds = self.default_ds.copy()
 
         for param_sample in sample:
             param = param_sample.parameter
@@ -504,14 +504,14 @@ class OneAtATimeParameterEnsemble(ParamEnsemble, ensemble_type="OAT"):
             )
         return samples
 
-    def create_ensemble_member(self, sample: EnsembleMemberSample) -> xr.Dataset:
+    def create_ensemble_member(self, sample: EnsembleMemberSample) -> ParameterDataset:
         """Create one member of the ensemble
 
         Args:
             sample (EnsembleMemberSample): Parameter samples for this member.
                 Contains one ParameterSample per parameter.
         Returns:
-            xr.Dataset: one member of the ensemble with updated values from default
+            ParameterDataset: one member of the ensemble with updated values from default
         """
         if len(sample) != 1:
             raise ValueError(
@@ -523,7 +523,7 @@ class OneAtATimeParameterEnsemble(ParamEnsemble, ensemble_type="OAT"):
         param = param_sample.parameter
         normalized_value = param_sample.normalized_value
 
-        ds = self.default_ds.copy(deep=False)
+        ds = self.default_ds.copy()
         value = param.sample(normalized_value, self.default_ds)
         param.set_value(ds, self.default_ds, value, fixed_indices=self.fixed_indices)
 
@@ -605,7 +605,7 @@ def _write_ensemble_list(out_dir: Path, file_prefix: str, ensembles: list[str]):
 
 def _validate_fixed_indices(
     fixed_indices: dict[str, list[int]],
-    default_ds: xr.Dataset,
+    default_ds: ParameterDataset,
 ) -> None:
     """Check to make sure supplied fixed_indices dict is compatible with input
     default parameter dataset
@@ -613,7 +613,7 @@ def _validate_fixed_indices(
     Args:
         fixed_indices (dict[str, list[int]]):  Mapping of dimension
             name to 0-based indices to hold at default.
-        default_ds (xr.Dataset): Default parameter dataset.
+        default_ds (ParameterDataset): Default parameter dataset.
 
     Raises:
         ValueError: fixed_indices dimension not found in dataset

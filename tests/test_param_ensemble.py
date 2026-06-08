@@ -17,6 +17,7 @@ from param_ens_gen.param_ensemble import (
 
 from param_ens_gen.ensemble_config import LatinHypercubeConfig
 from param_ens_gen.parameter import DimIndex, Parameter
+from param_ens_gen.parameter_dataset import ParameterDataset
 
 
 def test_from_dict_missing_ensemble_type(
@@ -159,7 +160,7 @@ def test_from_dict_valid_latin_hypercube_correctly_sets_attributes(
         }
     )
     assert ensemble.file_prefix == "test"
-    assert isinstance(ensemble.default_ds, xr.Dataset)
+    assert isinstance(ensemble.default_ds, ParameterDataset)
     assert ensemble.fixed_indices == {"fates_pft": [1]}
 
 

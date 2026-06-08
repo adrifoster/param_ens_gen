@@ -143,7 +143,7 @@ class ParameterDataset(ABC):
         if suffix == ".nc":
             return NetCDFParameterDataset.load(path)
         if suffix == ".json":
-            return JSONParameterDataset.load(path)
+            return FATESJSONParameterDataset.load(path)
         raise ValueError(
             f"Unsupported parameter file extension '{suffix}'. "
             "Supported formats: .nc (NetCDF), .json (JSON)."
