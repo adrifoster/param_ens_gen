@@ -226,7 +226,7 @@ class PFTStat(DistributionStat):
     """
 
     values: np.ndarray  # shape: (n_pfts,), dtype: float
-    indices: np.ndarray # 0-based PFT indices these values correspond to
+    indices: np.ndarray  # 0-based PFT indices these values correspond to
 
     def resolve(self, default_value: float | np.ndarray | None = None) -> np.ndarray:
         """Return the concrete stat value."""
@@ -263,7 +263,7 @@ class PFTStat(DistributionStat):
                 f"Found columns: {list(sheet.columns)}"
             )
         sheet = sheet.sort_values(by="pft_index", ascending=True)
-        
+
         # convert pft_index from 1-based to 0-based
         try:
             indices = sheet["pft_index"].to_numpy(dtype=int) - 1

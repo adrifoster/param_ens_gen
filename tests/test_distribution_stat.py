@@ -295,10 +295,98 @@ def test_pft_stat_from_sheet_missing_column_raises():
         PFTStat.from_sheet(bad_sheet, "param_min")
 
 
+def test_pft_stat_from_sheet_indices_are_zero_based(pft_sheet):
+    """PFTStat.from_sheet() stores 0-based indices."""
+    stat = PFTStat.from_sheet(pft_sheet, "param_min")
+    np.testing.assert_array_equal(stat.indices, [0, 1, 2])
+
+
+def test_pft_stat_from_sheet_non_contiguous_indices():
+    """PFTStat.from_sheet() correctly stores non-contiguous indices."""
+    partial_sheet = pd.DataFrame(
+        {
+            "pft_index": [1, 3],
+            "pft_name": ["white_spruce", "deciduous"],
+            "param_min": [0.005, 0.008],
+            "param_max": [0.040, 0.060],
+        }
+    )
+    stat = PFTStat.from_sheet(partial_sheet, "param_min")
+    np.testing.assert_array_equal(stat.indices, [0, 2])
+
+
+def test_pft_stat_from_sheet_non_integer_pft_index_raises():
+    """PFTStat.from_sheet() raises ValueError for non-integer pft_index values."""
+    bad_sheet = pd.DataFrame(
+        {
+            "pft_index": ["a", "b", "c"],
+            "pft_name": ["white_spruce", "black_spruce", "deciduous"],
+            "param_min": [0.005, 0.004, 0.008],
+            "param_max": [0.040, 0.035, 0.060],
+        }
+    )
+    with pytest.raises(ValueError, match="non-integer"):
+        PFTStat.from_sheet(bad_sheet, "param_min")
+
+
+def test_pft_stat_from_sheet_sorts_by_pft_index():
+    """PFTStat.from_sheet() sorts rows by pft_index before storing."""
+    unsorted_sheet = pd.DataFrame(
+        {
+            "pft_index": [3, 1, 2],
+            "pft_name": ["deciduous", "white_spruce", "black_spruce"],
+            "param_min": [0.008, 0.005, 0.004],
+            "param_max": [0.060, 0.040, 0.035],
+        }
+    )
+    stat = PFTStat.from_sheet(unsorted_sheet, "param_min")
+    np.testing.assert_allclose(stat.values, [0.005, 0.004, 0.008])
+    np.testing.assert_array_equal(stat.indices, [0, 1, 2])
+
+
 def test_pft_stat_resolve_returns_values(pft_sheet, default_ds):
     """PFTStat.resolve() returns the stored values array."""
     stat = PFTStat.from_sheet(pft_sheet, "param_min")
-    default_value = default_ds['fates_leaf_slatop'].values
+    default_value = default_ds["fates_leaf_slatop"].values
     result = stat.resolve(default_value)
     np.testing.assert_allclose(result, stat.values)
 
+
+def test_pft_stat_resolve_no_default_raises(pft_sheet):
+    """PFTStat.resolve() raises ValueError when no default_value is provided."""
+    stat = PFTStat.from_sheet(pft_sheet, "param_min")
+    with pytest.raises(ValueError, match="requires a default_value array"):
+        stat.resolve()
+
+
+def test_pft_stat_resolve_float_default_raises(pft_sheet):
+    """PFTStat.resolve() raises ValueError when default_value is a float."""
+    stat = PFTStat.from_sheet(pft_sheet, "param_min")
+    with pytest.raises(ValueError, match="requires a default_value array"):
+        stat.resolve(0.5)
+
+
+def test_pft_stat_resolve_none_default_raises(pft_sheet):
+    """PFTStat.resolve() raises ValueError when default_value is None."""
+    stat = PFTStat.from_sheet(pft_sheet, "param_min")
+    with pytest.raises(ValueError, match="requires a default_value array"):
+        stat.resolve(None)
+
+
+def test_pft_stat_resolve_partial_sheet_fills_from_default(default_ds):
+    """PFTStat.resolve() fills missing PFT indices from default_value."""
+    partial_sheet = pd.DataFrame(
+        {
+            "pft_index": [1, 3],  # only PFTs 1 and 3 (1-based)
+            "pft_name": ["white_spruce", "deciduous"],
+            "param_min": [0.005, 0.008],
+            "param_max": [0.040, 0.060],
+        }
+    )
+    stat = PFTStat.from_sheet(partial_sheet, "param_min")
+    default_value = default_ds["fates_leaf_slatop"].values  # [0.010, 0.020, 0.030]
+    result = stat.resolve(default_value)
+    # index 0 (pft_index=1): sheet value
+    # index 1 (pft_index=2): default
+    # index 2 (pft_index=3): sheet value
+    np.testing.assert_allclose(result, [0.005, 0.020, 0.008])

@@ -312,7 +312,9 @@ def test_normalize_at_min_pft_returns_zero(pft_uniform_row, pft_sheet, default_d
     """normalize() returns 0.0 for minimum bounds for PFT-specific bounds."""
     sampler = UniformSampler(pft_uniform_row, pft_sheet=pft_sheet)
     default_value = default_ds["fates_leaf_slatop"].values
-    result = sampler.normalize([0.005, 0.004, 0.008], SampleContext(default_value=default_value))
+    result = sampler.normalize(
+        [0.005, 0.004, 0.008], SampleContext(default_value=default_value)
+    )
     np.testing.assert_allclose(result, [0.0, 0.0, 0.0])
 
 
@@ -320,7 +322,9 @@ def test_normalize_at_max_pft_returns_zero(pft_uniform_row, pft_sheet, default_d
     """normalize() returns 1.0 for maximum bounds for PFT-specific bounds."""
     sampler = UniformSampler(pft_uniform_row, pft_sheet=pft_sheet)
     default_value = default_ds["fates_leaf_slatop"].values
-    result = sampler.normalize([0.040, 0.035, 0.060], SampleContext(default_value=default_value))
+    result = sampler.normalize(
+        [0.040, 0.035, 0.060], SampleContext(default_value=default_value)
+    )
     np.testing.assert_allclose(result, [1.0, 1.0, 1.0])
 
 
