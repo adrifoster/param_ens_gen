@@ -440,9 +440,9 @@ class SlicedParameter(Parameter, param_type="sliced"):
         return self.spec.base_params
 
     def get_default(self, default_ds: ParameterDataset) -> np.ndarray:
-      return default_ds[self.spec.base_params[0]].isel(
-        {self.spec.slice_dim: self.spec.slice_index}
-    )
+        return default_ds[self.spec.base_params[0]].isel(
+            {self.spec.slice_dim: self.spec.slice_index}
+        )
 
     def _write_at_index(
         self,
