@@ -264,7 +264,7 @@ class FATESJSONParameterVariable(ParameterVariable):
             expected_shape = tuple(self._dim_sizes[d] for d in dims)
             arr = arr.reshape(expected_shape)
         return arr
-    
+
     @property
     def values(self) -> np.ndarray:
         return self._values
@@ -274,7 +274,6 @@ class FATESJSONParameterVariable(ParameterVariable):
         self._values = np.asarray(arr)
         dims = self._entry.get("dims", [])
         if dims == ["scalar"]:
-            # write back as single-element list to match FATES JSON format
             self._entry["data"] = [float(self._values)]
         elif dims:
             self._entry["data"] = self._values.tolist()
@@ -360,16 +359,14 @@ class FATESJSONParameterDataset(ParameterDataset):
         return FATESJSONParameterDataset(new_data)
 
     def save(self, path: Path) -> None:
-        """Write this dataset to a JSON file.
-
-        Args:
-            path (Path): Output file path (should end in .json).
-        """
-        # flush any cached variable values back to _data before saving
         for name, var in self._cache.items():
-            self._params[name]["data"] = (
-                var.values.tolist() if var.values.ndim > 0 else float(var.values)
-            )
+            dims = self._params[name].get("dims", [])
+            if dims == ["scalar"]:
+                self._params[name]["data"] = [float(var.values)]
+            elif var.values.ndim > 0:
+                self._params[name]["data"] = var.values.tolist()
+            else:
+                self._params[name]["data"] = float(var.values)
         with open(path, "w", encoding="utf-8") as f:
             json.dump(self._data, f, indent=2)
 

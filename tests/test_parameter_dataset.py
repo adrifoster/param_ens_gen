@@ -242,3 +242,26 @@ def test_json_multidim_variable_shape(json_dataset):
 def test_json_close_is_noop(json_dataset):
     """FATESJSONParameterDataset.close() does not raise."""
     json_dataset.close()
+
+
+def test_json_scalar_dim_loads_correctly(json_dataset):
+    """JSONParameterVariable handles FATES-style ['scalar'] dim correctly."""
+    result = json_dataset["fates_canopy_closure_thresh"].values
+    assert result.ndim == 0
+    assert float(result) == pytest.approx(0.5)
+
+
+def test_json_scalar_dim_roundtrips(json_dataset, tmp_path):
+    """JSONParameterVariable with ['scalar'] dim writes and reloads correctly."""
+    json_dataset["fates_canopy_closure_thresh"].values = np.float64(0.9)
+    path = tmp_path / "output.json"
+    json_dataset.save(path)
+    reloaded = FATESJSONParameterDataset.load(path)
+    assert float(reloaded["fates_canopy_closure_thresh"].values) == pytest.approx(0.9)
+    # verify the format is preserved as ['scalar'] not []
+    import json
+
+    with open(path) as f:
+        data = json.load(f)
+    assert data["parameters"]["fates_canopy_closure_thresh"]["dims"] == ["scalar"]
+    assert isinstance(data["parameters"]["fates_canopy_closure_thresh"]["data"], list)
