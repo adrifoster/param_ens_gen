@@ -347,7 +347,9 @@ def test_set_value_dispatches_to_write_at_index_when_expanded(
 
     default_param.set_value(working_param_dataset, param_dataset, 9.0)
 
-    mock_at_index.assert_called_once_with(working_param_dataset, DimIndex("fates_pft", 1), 9.0)
+    mock_at_index.assert_called_once_with(
+        working_param_dataset, DimIndex("fates_pft", 1), 9.0
+    )
     mock_full.assert_not_called()
 
 
@@ -377,7 +379,9 @@ def test_set_value_none_fixed_indices_becomes_empty_dict(
         received["fixed_indices"] = fixed_indices
 
     monkeypatch.setattr(default_param, "_write_full", capture)
-    default_param.set_value(working_param_dataset, param_dataset, 9.0, fixed_indices=None)
+    default_param.set_value(
+        working_param_dataset, param_dataset, 9.0, fixed_indices=None
+    )
     assert received["fixed_indices"] == {}
 
 
@@ -390,7 +394,9 @@ def test_set_value_applies_precision(default_row, param_dataset, working_param_d
     assert result[0] == pytest.approx(0.12)
 
 
-def test_set_value_no_precision_unchanged(default_row, param_dataset, working_param_dataset):
+def test_set_value_no_precision_unchanged(
+    default_row, param_dataset, working_param_dataset
+):
     """set_value does not round when precision is None."""
     param = Parameter.from_row(default_row, param_dataset)
     param.set_value(working_param_dataset, param_dataset, 0.123456)
@@ -398,11 +404,15 @@ def test_set_value_no_precision_unchanged(default_row, param_dataset, working_pa
     assert result[0] == pytest.approx(0.123456)
 
 
-def test_set_value_precision_applied_to_array(default_row, param_dataset, working_param_dataset):
+def test_set_value_precision_applied_to_array(
+    default_row, param_dataset, working_param_dataset
+):
     """set_value rounds array values to the specified precision."""
     default_row["precision"] = ".3f"
     param = Parameter.from_row(default_row, param_dataset)
-    param.set_value(working_param_dataset, param_dataset, np.array([0.12345, 0.23456, 0.34567]))
+    param.set_value(
+        working_param_dataset, param_dataset, np.array([0.12345, 0.23456, 0.34567])
+    )
     np.testing.assert_allclose(
         working_param_dataset["fates_leaf_slatop"].values, [0.123, 0.235, 0.346]
     )
@@ -433,10 +443,12 @@ def test_set_value_precision_applied_to_joint_list(
         [np.array([0.12345, 0.23456, 0.34567]), np.array([2.1234, 2.5678, 2.9999])],
     )
     np.testing.assert_allclose(
-        working_param_dataset["fates_leafn_vert_scaler_coeff1"].values, [0.12, 0.23, 0.35]
+        working_param_dataset["fates_leafn_vert_scaler_coeff1"].values,
+        [0.12, 0.23, 0.35],
     )
     np.testing.assert_allclose(
-        working_param_dataset["fates_leafn_vert_scaler_coeff2"].values, [2.12, 2.57, 3.00]
+        working_param_dataset["fates_leafn_vert_scaler_coeff2"].values,
+        [2.12, 2.57, 3.00],
     )
 
 
@@ -502,7 +514,9 @@ def test_joint_parameter_sample(joint_param, param_dataset):
     assert np.all(result[1] >= 10.0) and np.all(result[1] <= 19.5)  # coeff2 range
 
 
-def test_build_context_pft_axis_set_for_1d_pft_param(default_param, param_dataset, mocker):
+def test_build_context_pft_axis_set_for_1d_pft_param(
+    default_param, param_dataset, mocker
+):
     """_build_context sets pft_axis=0 for a 1D PFT parameter."""
     mock_sample = mocker.patch.object(default_param.sampler, "sample", return_value=0.5)
     default_param.sample(0.5, param_dataset)
@@ -510,7 +524,9 @@ def test_build_context_pft_axis_set_for_1d_pft_param(default_param, param_datase
     assert ctx.pft_axis == 0
 
 
-def test_build_context_pft_axis_none_for_scalar_param(scalar_param, param_dataset, mocker):
+def test_build_context_pft_axis_none_for_scalar_param(
+    scalar_param, param_dataset, mocker
+):
     """_build_context sets pft_axis=None for a scalar parameter."""
     mock_sample = mocker.patch.object(scalar_param.sampler, "sample", return_value=0.5)
     scalar_param.sample(0.5, param_dataset)
@@ -518,7 +534,9 @@ def test_build_context_pft_axis_none_for_scalar_param(scalar_param, param_datase
     assert ctx.pft_axis is None
 
 
-def test_build_context_pft_axis_correct_for_2d_param(multi_dim_row, param_dataset, mocker):
+def test_build_context_pft_axis_correct_for_2d_param(
+    multi_dim_row, param_dataset, mocker
+):
     """_build_context sets pft_axis to the correct axis for a 2D parameter with pft dim."""
     # make a 2D param where pft is on axis 1: ['dim_1', 'fates_pft']
     multi_dim_row["parameter_name"] = "fates_leaf_vcmax25top"

@@ -41,7 +41,9 @@ def test_scale_from_root_missing_base_param_raises(default_row, param_dataset):
         Parameter.from_row(default_row, param_dataset)
 
 
-def test_scale_from_root_validate_multiple_base_params_raises(default_row, param_dataset):
+def test_scale_from_root_validate_multiple_base_params_raises(
+    default_row, param_dataset
+):
     """ScaleFromRootParam raises for multiple base_params"""
 
     default_row["parameter_name"] = "fates_leaf_vcmax25top"
@@ -72,7 +74,9 @@ def test_scale_from_root_set_value_no_fixed(
     param.set_value(working_param_dataset, param_dataset, value=delta)
 
     expected = np.array([-50000.0, -60000.0, -70000.0]) + delta
-    np.testing.assert_allclose(working_param_dataset["fates_nonhydro_smpsc"].values, expected)
+    np.testing.assert_allclose(
+        working_param_dataset["fates_nonhydro_smpsc"].values, expected
+    )
 
 
 def test_scale_from_root_set_value_with_fixed(
@@ -117,7 +121,9 @@ def test_scale_from_root_set_value_adds_delta_to_root(
     scale_param.active_index = DimIndex("fates_pft", 1)
     scale_param.set_value(working_param_dataset, param_dataset, -50000.0)
     # index 1: root[1] + delta = -65000 + -50000 = -115000
-    assert working_param_dataset["fates_nonhydro_smpsc"].values[1] == pytest.approx(-115000.0)
+    assert working_param_dataset["fates_nonhydro_smpsc"].values[1] == pytest.approx(
+        -115000.0
+    )
 
 
 def test_scale_from_root_set_value_other_slots_unchanged(
@@ -144,10 +150,14 @@ def test_scale_from_root_set_value_reads_written_root_not_default(
     working_param_dataset["fates_nonhydro_smpso"].values[:] = -999000.0
     scale_param.active_index = DimIndex("fates_pft", 1)
     scale_param.set_value(working_param_dataset, param_dataset, -1000.0)
-    assert working_param_dataset["fates_nonhydro_smpsc"].values[1] == pytest.approx(-1000000.0)
+    assert working_param_dataset["fates_nonhydro_smpsc"].values[1] == pytest.approx(
+        -1000000.0
+    )
 
 
-def test_scale_from_root_set_value_scalar_delta(scale_param, working_param_dataset, param_dataset):
+def test_scale_from_root_set_value_scalar_delta(
+    scale_param, working_param_dataset, param_dataset
+):
     """ScaleFromRootParameter.set_value can set a scalar delta"""
     working_param_dataset["fates_nonhydro_smpso"].values[:] = np.array(
         [-55000.0, -65000.0, -75000.0]
@@ -172,20 +182,30 @@ def test_write_full_array_delta(scale_param, working_param_dataset, param_datase
     )
 
 
-def test_write_full_fixed_indices_held_at_default(scale_param, working_param_dataset, param_dataset):
+def test_write_full_fixed_indices_held_at_default(
+    scale_param, working_param_dataset, param_dataset
+):
     """ScaleFromRoot.set_value can set an array with fixed indices held"""
     working_param_dataset["fates_nonhydro_smpso"].values[:] = np.array(
         [-55000.0, -65000.0, -75000.0]
     )
-    scale_param.set_value(working_param_dataset, param_dataset, -50000.0, {"fates_pft": [1]})
-    assert working_param_dataset["fates_nonhydro_smpsc"].values[0] == pytest.approx(-105000.0)
+    scale_param.set_value(
+        working_param_dataset, param_dataset, -50000.0, {"fates_pft": [1]}
+    )
+    assert working_param_dataset["fates_nonhydro_smpsc"].values[0] == pytest.approx(
+        -105000.0
+    )
     assert working_param_dataset["fates_nonhydro_smpsc"].values[1] == pytest.approx(
         param_dataset["fates_nonhydro_smpsc"].values[1]
     )
-    assert working_param_dataset["fates_nonhydro_smpsc"].values[2] == pytest.approx(-125000.0)
+    assert working_param_dataset["fates_nonhydro_smpsc"].values[2] == pytest.approx(
+        -125000.0
+    )
 
 
-def test_write_full_reads_written_root_not_default(scale_param, working_param_dataset, param_dataset):
+def test_write_full_reads_written_root_not_default(
+    scale_param, working_param_dataset, param_dataset
+):
     """Root must be read from working_param_dataset, not param_dataset."""
     working_param_dataset["fates_nonhydro_smpso"].values[:] = -999000.0
     scale_param.set_value(working_param_dataset, param_dataset, -1000.0, None)
@@ -202,7 +222,9 @@ def test_param_dataset_not_mutated(scale_param, working_param_dataset, param_dat
     working_param_dataset["fates_nonhydro_smpso"].values[:] = np.array(
         [-55000.0, -65000.0, -75000.0]
     )
-    scale_param.set_value(working_param_dataset, param_dataset, -50000.0, {"fates_pft": [0]})
+    scale_param.set_value(
+        working_param_dataset, param_dataset, -50000.0, {"fates_pft": [0]}
+    )
     np.testing.assert_array_equal(
         param_dataset["fates_nonhydro_smpso"].values, original_smpso
     )

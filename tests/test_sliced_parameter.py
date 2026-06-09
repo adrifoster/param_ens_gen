@@ -13,7 +13,9 @@ def test_sliced_param_validate_specs_passes(sliced_row, param_dataset):
     Parameter.from_row(sliced_row, param_dataset)
 
 
-def test_sliced_param_validate_specs_missing_slice_dim_raises(default_row, param_dataset):
+def test_sliced_param_validate_specs_missing_slice_dim_raises(
+    default_row, param_dataset
+):
     """_validate_specs() raises if slice_dim is missing"""
 
     default_row["parameter_name"] = "fates_leaf_vcmax25top"
@@ -151,7 +153,9 @@ def test_sliced_param_set_value_fixed_indices_respected(
     sliced_param, working_param_dataset, param_dataset
 ):
     """SlicedParameter.set_value correctly sets with fixed indices"""
-    sliced_param.set_value(working_param_dataset, param_dataset, 75.0, {"fates_pft": [1]})
+    sliced_param.set_value(
+        working_param_dataset, param_dataset, 75.0, {"fates_pft": [1]}
+    )
     result = working_param_dataset["fates_leaf_vcmax25top"].values
     assert result[0, 0] == pytest.approx(75.0)
     assert result[0, 1] == pytest.approx(
@@ -160,7 +164,9 @@ def test_sliced_param_set_value_fixed_indices_respected(
     assert result[0, 2] == pytest.approx(75.0)
 
 
-def test_sliced_param_set_value_array_value(sliced_param, working_param_dataset, param_dataset):
+def test_sliced_param_set_value_array_value(
+    sliced_param, working_param_dataset, param_dataset
+):
     """SlicedParameter.set_value can set a whole array"""
     value = np.array([21.0, 32.0, 43.0])
     sliced_param.set_value(working_param_dataset, param_dataset, value, None)
@@ -169,11 +175,17 @@ def test_sliced_param_set_value_array_value(sliced_param, working_param_dataset,
     )
 
 
-def test_sliced_param_set_value_ds_not_mutated(sliced_param, working_param_dataset, param_dataset):
+def test_sliced_param_set_value_ds_not_mutated(
+    sliced_param, working_param_dataset, param_dataset
+):
     """SlicedParameter.set_value doesn't modify the default ds"""
     original = param_dataset["fates_leaf_vcmax25top"].values.copy()
-    sliced_param.set_value(working_param_dataset, param_dataset, 75.0, {"fates_pft": [0]})
-    np.testing.assert_array_equal(param_dataset["fates_leaf_vcmax25top"].values, original)
+    sliced_param.set_value(
+        working_param_dataset, param_dataset, 75.0, {"fates_pft": [0]}
+    )
+    np.testing.assert_array_equal(
+        param_dataset["fates_leaf_vcmax25top"].values, original
+    )
 
 
 def test_sliced_set_value_no_fixed(sliced_row, param_dataset, working_param_dataset):
@@ -188,7 +200,9 @@ def test_sliced_set_value_no_fixed(sliced_row, param_dataset, working_param_data
     np.testing.assert_allclose(arr[1, :], [40.0, 50.0, 60.0])
 
 
-def test_sliced_set_value_with_fixed_indices(sliced_row, param_dataset, working_param_dataset):
+def test_sliced_set_value_with_fixed_indices(
+    sliced_row, param_dataset, working_param_dataset
+):
     """SlicedParameter.set_value leaves fixed PFTs at their default values."""
     param = Parameter.from_row(sliced_row, param_dataset)
     param.set_value(
@@ -203,7 +217,9 @@ def test_sliced_set_value_with_fixed_indices(sliced_row, param_dataset, working_
     assert arr[0, 2] == pytest.approx(80.0)  # written
 
 
-def test_sliced_set_value_with_active_index(sliced_row, param_dataset, working_param_dataset):
+def test_sliced_set_value_with_active_index(
+    sliced_row, param_dataset, working_param_dataset
+):
     """SlicedParameter.set_value writes only to (slice_index, active_index) cell."""
     param = Parameter.from_row(sliced_row, param_dataset)
     param.active_index = DimIndex(dim="fates_pft", index=1)

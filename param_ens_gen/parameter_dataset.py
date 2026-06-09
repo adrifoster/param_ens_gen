@@ -33,7 +33,7 @@ class ParameterVariable(ABC):
     @abstractmethod
     def values(self) -> np.ndarray:
         """Return the raw numpy array for this variable."""
-        
+
     @values.setter
     @abstractmethod
     def values(self, arr: np.ndarray) -> None:
@@ -67,7 +67,7 @@ class ParameterDataset(ABC):
     Wraps either a NetCDF or JSON parameter file and exposes a common
     set of operations used throughout param_ens_gen.
     """
-    
+
     @property
     @abstractmethod
     def file_extension(self) -> np.ndarray:
@@ -187,7 +187,7 @@ class NetCDFParameterDataset(ParameterDataset):
 
     def __init__(self, ds: xr.Dataset) -> None:
         self._ds = ds
-        
+
     @property
     def file_extension(self) -> str:
         return ".nc"
@@ -319,7 +319,7 @@ class FATESJSONParameterDataset(ParameterDataset):
     @property
     def file_extension(self) -> str:
         return ".json"
-        
+
     @property
     def sizes(self) -> dict[str, int]:
         return dict(self._dim_sizes)

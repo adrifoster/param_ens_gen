@@ -12,7 +12,9 @@ def test_validate_specs_passes_for_joint_parameter(
     joint_param_row, param_dataset, posterior_config
 ):
     """_validate_specs() does not raise for a correctly configured JointParameter."""
-    Parameter.from_row(joint_param_row, param_dataset, posterior_config=posterior_config)
+    Parameter.from_row(
+        joint_param_row, param_dataset, posterior_config=posterior_config
+    )
 
 
 def test_joint_param_empty_base_params_raises(
@@ -27,7 +29,9 @@ def test_joint_param_empty_base_params_raises(
     default_row["param_max"] = ""
     default_row["base_params"] = "[]"
     with pytest.raises(ValueError, match="base_params"):
-        Parameter.from_row(default_row, param_dataset, posterior_config=posterior_config)
+        Parameter.from_row(
+            default_row, param_dataset, posterior_config=posterior_config
+        )
 
 
 def test_joint_get_default(joint_param_row, param_dataset, posterior_config):
@@ -70,7 +74,9 @@ def test_joint_get_default_returns_arrays_when_not_expanded(
     assert all(r.shape == (3,) for r in result)
 
 
-def test_joint_set_value(joint_param_row, param_dataset, working_param_dataset, posterior_config):
+def test_joint_set_value(
+    joint_param_row, param_dataset, working_param_dataset, posterior_config
+):
     """JointParameter.set_value writes each array to its corresponding variable."""
     param = Parameter.from_row(
         joint_param_row, param_dataset, posterior_config=posterior_config
@@ -96,7 +102,9 @@ def test_joint_set_value_wrong_length_raises(
         joint_param_row, param_dataset, posterior_config=posterior_config
     )
     with pytest.raises(ValueError, match="expected 2 arrays"):
-        param.set_value(working_param_dataset, param_dataset, value=[np.array([0.5, 0.6, 0.7])])
+        param.set_value(
+            working_param_dataset, param_dataset, value=[np.array([0.5, 0.6, 0.7])]
+        )
 
 
 def test_joint_set_value_with_index_sets_single_slot_in_all_params(
@@ -110,16 +118,20 @@ def test_joint_set_value_with_index_sets_single_slot_in_all_params(
         [0.99, 3.5],
         None,
     )
-    assert working_param_dataset["fates_leafn_vert_scaler_coeff1"].values[1] == pytest.approx(0.99)
-    assert working_param_dataset["fates_leafn_vert_scaler_coeff2"].values[1] == pytest.approx(3.5)
+    assert working_param_dataset["fates_leafn_vert_scaler_coeff1"].values[
+        1
+    ] == pytest.approx(0.99)
+    assert working_param_dataset["fates_leafn_vert_scaler_coeff2"].values[
+        1
+    ] == pytest.approx(3.5)
     # other indices untouched
     for i in [0, 2]:
-        assert working_param_dataset["fates_leafn_vert_scaler_coeff1"].values[i] == pytest.approx(
-            param_dataset["fates_leafn_vert_scaler_coeff1"].values[i]
-        )
-        assert working_param_dataset["fates_leafn_vert_scaler_coeff2"].values[i] == pytest.approx(
-            param_dataset["fates_leafn_vert_scaler_coeff2"].values[i]
-        )
+        assert working_param_dataset["fates_leafn_vert_scaler_coeff1"].values[
+            i
+        ] == pytest.approx(param_dataset["fates_leafn_vert_scaler_coeff1"].values[i])
+        assert working_param_dataset["fates_leafn_vert_scaler_coeff2"].values[
+            i
+        ] == pytest.approx(param_dataset["fates_leafn_vert_scaler_coeff2"].values[i])
 
 
 def test_joint_set_value_broadcasts_arrays_to_all_params(
@@ -143,27 +155,36 @@ def test_joint_set_value_fixed_indices_respected_across_all_params(
     """JointParameter.set_value can hold fixed_indices at default"""
     coeff1 = np.array([0.010, 0.011, 0.012])
     coeff2 = np.array([2.2, 2.3, 2.4])
-    joint_param.set_value(working_param_dataset, param_dataset, [coeff1, coeff2], {"fates_pft": [1]})
+    joint_param.set_value(
+        working_param_dataset, param_dataset, [coeff1, coeff2], {"fates_pft": [1]}
+    )
     # index 1 held at default for both
-    assert working_param_dataset["fates_leafn_vert_scaler_coeff1"].values[1] == pytest.approx(
-        param_dataset["fates_leafn_vert_scaler_coeff1"].values[1]
-    )
-    assert working_param_dataset["fates_leafn_vert_scaler_coeff2"].values[1] == pytest.approx(
-        param_dataset["fates_leafn_vert_scaler_coeff2"].values[1]
-    )
+    assert working_param_dataset["fates_leafn_vert_scaler_coeff1"].values[
+        1
+    ] == pytest.approx(param_dataset["fates_leafn_vert_scaler_coeff1"].values[1])
+    assert working_param_dataset["fates_leafn_vert_scaler_coeff2"].values[
+        1
+    ] == pytest.approx(param_dataset["fates_leafn_vert_scaler_coeff2"].values[1])
     # other indices written
-    assert working_param_dataset["fates_leafn_vert_scaler_coeff1"].values[0] == pytest.approx(
-        0.010
-    )
-    assert working_param_dataset["fates_leafn_vert_scaler_coeff2"].values[2] == pytest.approx(2.4)
+    assert working_param_dataset["fates_leafn_vert_scaler_coeff1"].values[
+        0
+    ] == pytest.approx(0.010)
+    assert working_param_dataset["fates_leafn_vert_scaler_coeff2"].values[
+        2
+    ] == pytest.approx(2.4)
 
 
-def test_joint_set_value_param_dataset_not_mutated(joint_param, working_param_dataset, param_dataset):
+def test_joint_set_value_param_dataset_not_mutated(
+    joint_param, working_param_dataset, param_dataset
+):
     """JointParameter.set_value does not change the param_dataset"""
     original_c1 = param_dataset["fates_leafn_vert_scaler_coeff1"].values.copy()
     original_c2 = param_dataset["fates_leafn_vert_scaler_coeff2"].values.copy()
     joint_param.set_value(
-        working_param_dataset, param_dataset, [np.ones(3), np.ones(3)], {"fates_pft": [0]}
+        working_param_dataset,
+        param_dataset,
+        [np.ones(3), np.ones(3)],
+        {"fates_pft": [0]},
     )
     np.testing.assert_array_equal(
         param_dataset["fates_leafn_vert_scaler_coeff1"].values, original_c1

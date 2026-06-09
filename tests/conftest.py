@@ -1,13 +1,14 @@
 """Fixtures shared across param_ens_gen tests."""
 
 from pathlib import Path
+import json
 
 import numpy as np
 import pandas as pd
 import xarray as xr
 import pytest
 import yaml
-import json
+
 
 from param_ens_gen.posterior_source import PosteriorSource
 from param_ens_gen.parameter import (
@@ -508,40 +509,66 @@ def working_ds(default_ds) -> xr.Dataset:
 @pytest.fixture(params=["netcdf", "json"])
 def default_param(request, default_row, default_ds, json_dataset):
     """DefaultParameter for fates_leaf_slatop, parametrized over backends."""
-    ds = NetCDFParameterDataset(default_ds) if request.param == "netcdf" else json_dataset
+    ds = (
+        NetCDFParameterDataset(default_ds)
+        if request.param == "netcdf"
+        else json_dataset
+    )
     return DefaultParameter(default_row, ds)
+
 
 @pytest.fixture(params=["netcdf", "json"])
 def multi_dim_param(request, multi_dim_row, default_ds, json_dataset):
     """DefaultParameter for a multi-dimensional parameter, parametrized over backends."""
-    ds = NetCDFParameterDataset(default_ds) if request.param == "netcdf" else json_dataset
+    ds = (
+        NetCDFParameterDataset(default_ds)
+        if request.param == "netcdf"
+        else json_dataset
+    )
     return DefaultParameter(multi_dim_row, ds)
 
 
 @pytest.fixture(params=["netcdf", "json"])
 def scalar_param(request, scalar_row, default_ds, json_dataset):
     """DefaultParameter for scalar fates_canopy_closure_thresh, parametrized over backends."""
-    ds = NetCDFParameterDataset(default_ds) if request.param == "netcdf" else json_dataset
+    ds = (
+        NetCDFParameterDataset(default_ds)
+        if request.param == "netcdf"
+        else json_dataset
+    )
     return DefaultParameter(scalar_row, ds)
+
 
 @pytest.fixture(params=["netcdf", "json"])
 def sliced_param(request, sliced_row, default_ds, json_dataset):
     """SlicedParameter for fates_leaf_vcmax25top, parametrized over backends."""
-    ds = NetCDFParameterDataset(default_ds) if request.param == "netcdf" else json_dataset
+    ds = (
+        NetCDFParameterDataset(default_ds)
+        if request.param == "netcdf"
+        else json_dataset
+    )
     return SlicedParameter(sliced_row, ds)
 
 
 @pytest.fixture(params=["netcdf", "json"])
 def scale_param(request, scale_from_root_row, default_ds, json_dataset):
     """ScaleFromRootParameter, parametrized over backends."""
-    ds = NetCDFParameterDataset(default_ds) if request.param == "netcdf" else json_dataset
+    ds = (
+        NetCDFParameterDataset(default_ds)
+        if request.param == "netcdf"
+        else json_dataset
+    )
     return ScaleFromRootParameter(scale_from_root_row, ds)
 
 
 @pytest.fixture(params=["netcdf", "json"])
 def joint_param(request, joint_param_row, default_ds, json_dataset, posterior_config):
     """JointParameter, parametrized over backends."""
-    ds = NetCDFParameterDataset(default_ds) if request.param == "netcdf" else json_dataset
+    ds = (
+        NetCDFParameterDataset(default_ds)
+        if request.param == "netcdf"
+        else json_dataset
+    )
     return JointParameter(joint_param_row, ds, posterior_config=posterior_config)
 
 
@@ -922,8 +949,12 @@ def scale_from_root_different_group_dir(tmp_path) -> Path:
 
 @pytest.fixture(params=["netcdf", "json"])
 def lh_ensemble(
-    request, ensemble_param_dir, default_netcdf_file, json_param_file,
-    tmp_path, posterior_config_file
+    request,
+    ensemble_param_dir,
+    default_netcdf_file,
+    json_param_file,
+    tmp_path,
+    posterior_config_file,
 ):
     """A LatinHypercube ensemble parametrized over NetCDF and JSON backends."""
     param_file = default_netcdf_file if request.param == "netcdf" else json_param_file
@@ -940,8 +971,12 @@ def lh_ensemble(
 
 @pytest.fixture(params=["netcdf", "json"])
 def oat_ensemble(
-    request, ensemble_param_dir, default_netcdf_file, json_param_file,
-    tmp_path, posterior_config_file
+    request,
+    ensemble_param_dir,
+    default_netcdf_file,
+    json_param_file,
+    tmp_path,
+    posterior_config_file,
 ):
     """A OneAtATime ensemble parametrized over NetCDF and JSON backends."""
     param_file = default_netcdf_file if request.param == "netcdf" else json_param_file
@@ -1014,11 +1049,10 @@ def lh_expand_ensemble(
     )
     return LatinHypercubeEnsemble(config)
 
+
 @pytest.fixture
 def netcdf_dataset(default_ds) -> NetCDFParameterDataset:
     """A NetCDFParameterDataset wrapping default_ds."""
-    from param_ens_gen.parameter_dataset import NetCDFParameterDataset
-
     return NetCDFParameterDataset(default_ds)
 
 
@@ -1110,6 +1144,7 @@ def param_dataset(request, default_ds, json_dataset):
     if request.param == "netcdf":
         return NetCDFParameterDataset(default_ds)
     return json_dataset
+
 
 @pytest.fixture(params=["netcdf", "json"])
 def working_param_dataset(request, default_ds, json_dataset):

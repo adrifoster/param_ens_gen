@@ -211,7 +211,8 @@ def test_missing_netcdf_default_param_file_raises(
     )
     with pytest.raises(FileNotFoundError, match="does not exist"):
         LatinHypercubeEnsemble(config)
-        
+
+
 def test_missing_posterior_sources_file_raises(
     ensemble_param_dir, tmp_path, default_param_file
 ):

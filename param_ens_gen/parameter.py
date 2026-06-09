@@ -283,7 +283,8 @@ class Parameter(ABC):
 
         Args:
             ds (ParameterDataset): Working copy of the parameter dataset. Modified in place.
-            default_ds (ParameterDataset): Unchanging default dataset. Used to restore fixed positions.
+            default_ds (ParameterDataset): Unchanging default dataset. Used to restore fixed
+                positions.
             value (float | np.ndarray | list[np.ndarray]): Value to write
             fixed_indices (dict[str, list[int]] | None): Run-level mapping of dimension to
                 0-based indices to hold at default. None means no indices are fixed

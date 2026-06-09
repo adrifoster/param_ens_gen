@@ -16,7 +16,9 @@ def test_sort_params_no_dependencies(default_param, scalar_param):
     ]
 
 
-def test_sort_params_root_before_dependent(param_dataset, scale_from_root_row, root_row):
+def test_sort_params_root_before_dependent(
+    param_dataset, scale_from_root_row, root_row
+):
     """ScaleFromRootParameter is sorted after its root."""
 
     root = DefaultParameter(root_row, param_dataset)

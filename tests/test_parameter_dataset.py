@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
 import numpy as np
 import pytest
 
@@ -12,13 +10,13 @@ from param_ens_gen.parameter_dataset import (
     NetCDFParameterDataset,
     FATESJSONParameterDataset,
     NetCDFParameterVariable,
-    FATESJSONParameterVariable
+    FATESJSONParameterVariable,
 )
-
 
 # ===========================================================================
 # ParameterDataset.from_path
 # ===========================================================================
+
 
 def test_from_path_loads_netcdf(default_netcdf_file):
     """from_path returns a NetCDFParameterDataset for .nc files."""
@@ -38,7 +36,8 @@ def test_from_path_unsupported_extension_raises(tmp_path):
     bad_file.write_text("not a param file")
     with pytest.raises(ValueError, match="Unsupported parameter file extension"):
         ParameterDataset.from_path(bad_file)
-        
+
+
 # ===========================================================================
 # NetCDFParameterDataset
 # ===========================================================================
@@ -77,7 +76,7 @@ def test_netcdf_getitem_returns_variable(netcdf_dataset):
 def test_netcdf_getitem_missing_raises(netcdf_dataset):
     """NetCDFParameterDataset.__getitem__ raises KeyError for missing variables."""
     with pytest.raises(KeyError, match="nonexistent"):
-       print(netcdf_dataset["nonexistent"])
+        print(netcdf_dataset["nonexistent"])
 
 
 def test_netcdf_variable_values(netcdf_dataset):
@@ -223,9 +222,7 @@ def test_json_save_preserves_modified_values(json_dataset, tmp_path):
     path = tmp_path / "output.json"
     json_dataset.save(path)
     reloaded = FATESJSONParameterDataset.load(path)
-    np.testing.assert_allclose(
-        reloaded["fates_leaf_slatop"].values, [1.0, 2.0, 3.0]
-    )
+    np.testing.assert_allclose(reloaded["fates_leaf_slatop"].values, [1.0, 2.0, 3.0])
 
 
 def test_json_scalar_variable(json_dataset):
