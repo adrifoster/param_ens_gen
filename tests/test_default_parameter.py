@@ -334,3 +334,21 @@ def test_default_set_value_multi_element_array_raises(
         default_param.set_value(
             working_param_dataset, param_dataset, np.array([1.0, 2.0])
         )
+
+
+def test_default_normalize_at_min(default_row, param_dataset):
+    """normalize() returns 0.0 for the minimum bound."""
+    param = Parameter.from_row(default_row, param_dataset)
+    assert param.normalize(0.005, param_dataset) == pytest.approx(0.0)
+
+
+def test_default_normalize_at_max(default_row, param_dataset):
+    """normalize() returns 1.0 for the maximum bound."""
+    param = Parameter.from_row(default_row, param_dataset)
+    assert param.normalize(0.05, param_dataset) == pytest.approx(1.0)
+
+
+def test_default_normalize_at_midpoint(default_row, param_dataset):
+    """normalize() returns 0.5 for the midpoint of min and max."""
+    param = Parameter.from_row(default_row, param_dataset)
+    assert param.normalize(0.0275, param_dataset) == pytest.approx(0.5)

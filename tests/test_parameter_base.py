@@ -560,3 +560,68 @@ def test_build_context_pft_axis_none_for_non_pft_param(
     multi_dim_param.sample(0.5, param_dataset)
     ctx = mock_sample.call_args[0][1]
     assert ctx.pft_axis is None
+
+
+# =============================================================================
+# Normalize
+# =============================================================================
+
+
+def test_normalize_passes_active_index_to_context(default_param, default_ds, mocker):
+    """normalize() passes active_index through to the SampleContext."""
+    default_param.active_index = DimIndex("fates_pft", 1)
+    mock_normalize = mocker.patch.object(
+        default_param.sampler, "normalize", return_value=0.5
+    )
+    default_param.normalize(0.02, default_ds)
+    ctx = mock_normalize.call_args[0][1]
+    assert ctx.array_index == 1
+
+
+def test_normalize_is_inverse_of_sample(default_param, default_ds):
+    """normalize(sample(v)) == v for any v in [0, 1]."""
+    for v in [0.0, 0.25, 0.5, 0.75, 1.0]:
+        sampled = default_param.sample(v, default_ds)
+        assert default_param.normalize(sampled, default_ds) == pytest.approx(v)
+
+
+def test_default_parameter_normalize_bounds(default_param, param_dataset):
+    """normalize() at 0.005 and 0.05 returns 0.0 and 1.0."""
+    assert default_param.normalize(0.005, param_dataset) == pytest.approx(0.0)
+    assert default_param.normalize(0.05, param_dataset) == pytest.approx(1.0)
+    
+def test_scalar_parameter_normalize(scalar_param, param_dataset):
+    """normalize() returns a value with the expected value."""
+    result = scalar_param.normalize(0.8, param_dataset)
+    assert result == pytest.approx(0.5)
+
+
+def test_scalar_parameter_normalize_bounds(scalar_param, param_dataset):
+    """normalize() at min and max returns 0.0 and 1.0."""
+    assert scalar_param.normalize(0.7, param_dataset) == pytest.approx(0.0)
+    assert scalar_param.normalize(0.9, param_dataset) == pytest.approx(1.0)
+
+
+def test_percent_parameter_normalize(percent_row, param_dataset):
+    """normalize() returns a value with the expected value."""
+    param = Parameter.from_row(percent_row, param_dataset)
+    default = param_dataset["fates_leaf_vcmax25top"].values
+    result = param.normalize(default, param_dataset)
+    np.testing.assert_allclose(result, 0.5)
+
+
+def test_joint_parameter_normalize(joint_param, param_dataset):
+    """normalize() returns a list of arrays, one per base_param."""
+    default_values = [
+        np.array([0.012, 0.015, 0.005]),
+        np.array([2.1, 2.5, 2.6]),
+    ]
+    result = joint_param.normalize(default_values, param_dataset)
+
+    assert len(result) == 2
+    assert result[0].shape == (3,)
+    assert result[1].shape == (3,)
+    
+    # normalized values should be in [0, 1]
+    assert np.all(result[0] >= 0.0) and np.all(result[0] <= 1.0)
+    assert np.all(result[1] >= 0.0) and np.all(result[1] <= 1.0)

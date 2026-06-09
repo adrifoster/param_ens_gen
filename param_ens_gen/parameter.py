@@ -234,6 +234,31 @@ class Parameter(ABC):
         context = self._build_context(default_value)
         return self.sampler.sample(normalized_value, context)
 
+    def normalize(
+        self,
+        value: float | np.ndarray,
+        default_ds: ParameterDataset,
+    ) -> float | np.ndarray:
+        """Normalize a parameter to 0-1 given an input value
+
+        Builds a SampleContext from the dataset and fixed_indices, then
+        delegates to self.sampler. Subclasses override _build_context if
+        they need different context behaviour (e.g. JointParameter passes
+        mask=None).
+
+        Args:
+            value (float): value to normalize
+            default_ds (ParameterDataset): default parameter dataset. used for validating
+                dimensions and indices
+            fixed_indices (dict[str, list[int]]): 0-based indices to hold at default.
+
+        Returns:
+            float: normalized [0-1] parameter value.
+        """
+        default_value = self.get_default(default_ds)
+        context = self._build_context(default_value)
+        return self.sampler.normalize(value, context)
+
     def _build_context(
         self,
         default_value: float | np.ndarray | list[np.ndarray],

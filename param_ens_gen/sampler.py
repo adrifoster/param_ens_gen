@@ -328,16 +328,26 @@ class PosteriorSampler(Sampler, sampler_type="posterior"):
         )
 
     def _unscale_broadcast(
-        self, value: float, n_indices: list[int] | None
+        self, value: float | list[np.ndarray], n_indices: list[int] | None
     ) -> list[np.ndarray]:
         result = [np.zeros(n_indices) for _ in self.parameters]
         if len(self.sources) == 1 and self.sources[0].is_broadcast:
-            unscaled = self.sources[0].unscale(value)
+            sort_idx = self.sources[0].sort_param_index
+            if isinstance(value, list):
+                sort_value = float(value[sort_idx].flat[0])
+            else:
+                sort_value = value
+            unscaled = self.sources[0].unscale(sort_value)
             for k, _ in enumerate(self.parameters):
                 result[k][:] = unscaled
         else:
             for source in self.sources:
-                row = source.unscale(value)
+                sort_idx = source.sort_param_index
+                if isinstance(value, list):
+                    sort_value = float(value[sort_idx].flat[0])
+                else:
+                    sort_value = value
+                row = source.unscale(sort_value)
                 indices = (
                     range(n_indices) if source.is_broadcast else source.array_indices
                 )
