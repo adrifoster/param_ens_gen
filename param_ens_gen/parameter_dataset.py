@@ -253,15 +253,18 @@ class FATESJSONParameterVariable(ParameterVariable):
         self._values: np.ndarray = self._load_values()
 
     def _load_values(self) -> np.ndarray:
-        """Convert the JSON data list to a numpy array with correct shape."""
         data = self._entry["data"]
-        arr = np.array(data)
         dims = self._entry.get("dims", [])
+        if dims == ["scalar"]:
+            # single-element list — extract scalar value
+            val = data[0] if isinstance(data, list) else data
+            return np.asarray(val if val is not None else np.nan)
+        arr = np.array(data)
         if dims:
             expected_shape = tuple(self._dim_sizes[d] for d in dims)
             arr = arr.reshape(expected_shape)
         return arr
-
+    
     @property
     def values(self) -> np.ndarray:
         return self._values
@@ -269,17 +272,19 @@ class FATESJSONParameterVariable(ParameterVariable):
     @values.setter
     def values(self, arr: np.ndarray) -> None:
         self._values = np.asarray(arr)
-        # write back to the entry so save() picks it up
         dims = self._entry.get("dims", [])
-        if dims:
+        if dims == ["scalar"]:
+            # write back as single-element list to match FATES JSON format
+            self._entry["data"] = [float(self._values)]
+        elif dims:
             self._entry["data"] = self._values.tolist()
         else:
-            # scalar: store as a plain Python float
-            self._entry["data"] = float(arr)
+            self._entry["data"] = float(self._values)
 
     @property
     def dims(self) -> list[str]:
-        return list(self._entry.get("dims", []))
+        dims = self._entry.get("dims", [])
+        return [] if dims == ["scalar"] else dims
 
     def isel(self, indexers: dict[str, int]) -> np.ndarray:
         dims = self.dims

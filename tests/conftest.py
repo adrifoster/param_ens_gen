@@ -1077,10 +1077,10 @@ def json_param_file(tmp_path) -> Path:
             },
             "fates_canopy_closure_thresh": {
                 "dtype": "float",
-                "dims": [],
+                "dims": ["scalar"],
                 "long_name": "canopy closure threshold",
                 "units": "1/yr",
-                "data": 0.5,
+                "data": [0.5],
             },
             "fates_leaf_vcmax25top": {
                 "dtype": "float",
