@@ -7,6 +7,7 @@ import pandas as pd
 import xarray as xr
 import pytest
 import yaml
+import json
 
 from param_ens_gen.posterior_source import PosteriorSource
 from param_ens_gen.parameter import (
@@ -18,7 +19,12 @@ from param_ens_gen.parameter import (
 from param_ens_gen.ensemble_config import LatinHypercubeConfig, OneAtATimeConfig
 from param_ens_gen.param_ensemble import (
     LatinHypercubeEnsemble,
-    OneAtATimeParameterEnsemble,
+    OneAtATimeEnsemble,
+)
+from param_ens_gen.parameter_dataset import (
+    ParameterDataset,
+    NetCDFParameterDataset,
+    FATESJSONParameterDataset,
 )
 
 N_PFTS = 3
@@ -721,6 +727,193 @@ def posterior_config_file(tmp_path, posterior_file) -> Path:
     return path
 
 
+@pytest.fixture
+def grouped_param_dir(tmp_path) -> Path:
+    """A param_dir with grouped and ungrouped parameters."""
+    pd.DataFrame(
+        [
+            {
+                "parameter_name": "fates_leaf_slatop",
+                "long_name": "SLA at top of canopy",
+                "category": "stomatal",
+                "subcategory": "photosynthesis",
+                "units": "m^2/gC",
+                "coord": "['fates_pft']",
+                "param_type": "default",
+                "strategy": "uniform",
+                "param_min": "0.005",
+                "param_max": "0.05",
+                "slice_dim": None,
+                "slice_index": None,
+                "root_param": None,
+                "base_params": "",
+                "group_name": "photosynthesis",
+            },
+            {
+                "parameter_name": "fates_leaf_vcmax25top",
+                "long_name": "maximum carboxylation rate of Rub. at 25C, canopy top",
+                "category": "stomatal",
+                "subcategory": "photosynthesis",
+                "units": "umol CO2/m^2/s",
+                "coord": "['fates_leafage_class', 'fates_pft']",
+                "param_type": "sliced",
+                "strategy": "uniform",
+                "param_min": "20.0",
+                "param_max": "90.0",
+                "slice_dim": "fates_leafage_class",
+                "slice_index": 0,
+                "root_param": None,
+                "base_params": "fates_leaf_vcmax25top",
+                "group_name": "photosynthesis",
+            },
+            {
+                "parameter_name": "fates_nonhydro_smpso",
+                "long_name": "Soil water potential at full stomatal opening",
+                "category": "stomatal",
+                "subcategory": "vegetation water",
+                "units": "mm",
+                "coord": "['fates_pft']",
+                "param_type": "default",
+                "strategy": "uniform",
+                "param_min": "20percent",
+                "param_max": "20percent",
+                "slice_dim": None,
+                "slice_index": None,
+                "root_param": None,
+                "base_params": None,
+                "group_name": "water",
+                "expand_dim": "fates_pft",
+            },
+            {
+                "parameter_name": "smpsc_delta",
+                "long_name": "Soil water potential at full stomatal closing (delta)",
+                "category": "stomatal",
+                "subcategory": "vegetation water",
+                "units": "mm",
+                "coord": "['fates_pft']",
+                "param_type": "scale_from_root",
+                "strategy": "uniform",
+                "param_min": "-600000",
+                "param_max": "-20000",
+                "slice_dim": None,
+                "slice_index": None,
+                "root_param": "fates_nonhydro_smpso",
+                "base_params": "fates_nonhydro_smpsc",
+                "group_name": "water",
+                "expand_dim": "fates_pft",
+            },
+            {
+                "parameter_name": "fates_canopy_closure_thresh",
+                "long_name": "canopy coverage at which crown area allometry changes",
+                "category": "biogeochemistry",
+                "subcategory": "vegetation dynamics",
+                "units": "1/yr",
+                "coord": "[]",
+                "param_type": "default",
+                "strategy": "uniform",
+                "param_min": "0.1",
+                "param_max": "0.7",
+                "slice_dim": None,
+                "slice_index": None,
+                "root_param": None,
+                "base_params": None,
+                "group_name": None,
+            },
+        ]
+    ).to_csv(tmp_path / "main.csv", index=False)
+    return tmp_path
+
+
+@pytest.fixture
+def mixed_expand_dim_group_dir(tmp_path) -> Path:
+    """A param_dir with a group where parameters have mixed expand_dim values."""
+    pd.DataFrame(
+        [
+            {
+                "parameter_name": "fates_leaf_slatop",
+                "long_name": "SLA at top of canopy",
+                "category": "stomatal",
+                "subcategory": "photosynthesis",
+                "units": "m^2/gC",
+                "coord": "['fates_pft']",
+                "param_type": "default",
+                "strategy": "uniform",
+                "param_min": "0.005",
+                "param_max": "0.05",
+                "slice_dim": None,
+                "slice_index": None,
+                "root_param": None,
+                "base_params": "",
+                "group_name": "bad_group",
+                "expand_dim": "fates_pft",
+            },
+            {
+                "parameter_name": "fates_canopy_closure_thresh",
+                "long_name": "canopy coverage at which crown area allometry changes",
+                "category": "biogeochemistry",
+                "subcategory": "vegetation dynamics",
+                "units": "1/yr",
+                "coord": "[]",
+                "param_type": "default",
+                "strategy": "uniform",
+                "param_min": "0.1",
+                "param_max": "0.7",
+                "slice_dim": None,
+                "slice_index": None,
+                "root_param": None,
+                "base_params": None,
+                "group_name": "bad_group",
+                "expand_dim": None,
+            },
+        ]
+    ).to_csv(tmp_path / "main.csv", index=False)
+    return tmp_path
+
+
+@pytest.fixture
+def scale_from_root_different_group_dir(tmp_path) -> Path:
+    """A param_dir where scale_from_root and its root are in different groups."""
+    pd.DataFrame(
+        [
+            {
+                "parameter_name": "fates_nonhydro_smpso",
+                "long_name": "Soil water potential at full stomatal opening",
+                "category": "stomatal",
+                "subcategory": "vegetation water",
+                "units": "mm",
+                "coord": "['fates_pft']",
+                "param_type": "default",
+                "strategy": "uniform",
+                "param_min": "20percent",
+                "param_max": "20percent",
+                "slice_dim": None,
+                "slice_index": None,
+                "root_param": None,
+                "base_params": None,
+                "group_name": "water",
+            },
+            {
+                "parameter_name": "smpsc_delta",
+                "long_name": "Soil water potential at full stomatal closing (delta)",
+                "category": "stomatal",
+                "subcategory": "vegetation water",
+                "units": "mm",
+                "coord": "['fates_pft']",
+                "param_type": "scale_from_root",
+                "strategy": "uniform",
+                "param_min": "-600000",
+                "param_max": "-20000",
+                "slice_dim": None,
+                "slice_index": None,
+                "root_param": "fates_nonhydro_smpso",
+                "base_params": "fates_nonhydro_smpsc",
+                "group_name": "soil",
+            },
+        ]
+    ).to_csv(tmp_path / "main.csv", index=False)
+    return tmp_path
+
+
 # =============================================================================
 # ParamEnsemble fixtures
 # =============================================================================
@@ -754,7 +947,7 @@ def oat_ensemble(
         default_param_file=default_param_file,
         posterior_sources=posterior_config_file,
     )
-    return OneAtATimeParameterEnsemble(config)
+    return OneAtATimeEnsemble(config)
 
 
 @pytest.fixture
@@ -812,3 +1005,93 @@ def lh_expand_ensemble(expand_param_dir, default_param_file, tmp_path):
         ensemble_members=5,
     )
     return LatinHypercubeEnsemble(config)
+
+
+@pytest.fixture
+def netcdf_dataset(default_ds) -> NetCDFParameterDataset:
+    """A NetCDFParameterDataset wrapping default_ds."""
+    from param_ens_gen.parameter_dataset import NetCDFParameterDataset
+
+    return NetCDFParameterDataset(default_ds)
+
+
+@pytest.fixture
+def json_param_file(tmp_path) -> Path:
+    """A minimal FATES-style JSON parameter file mirroring default_ds."""
+    data = {
+        "attributes": {"history": "test fixture"},
+        "dimensions": {
+            "fates_pft": 3,
+            "fates_leafage_class": 2,
+            "dim_1": 2,
+            "dim_2": 3,
+        },
+        "parameters": {
+            "fates_leaf_slatop": {
+                "dtype": "float",
+                "dims": ["fates_pft"],
+                "long_name": "SLA at top of canopy",
+                "units": "m^2/gC",
+                "data": [0.010, 0.020, 0.030],
+            },
+            "fates_canopy_closure_thresh": {
+                "dtype": "float",
+                "dims": [],
+                "long_name": "canopy closure threshold",
+                "units": "1/yr",
+                "data": 0.5,
+            },
+            "fates_leaf_vcmax25top": {
+                "dtype": "float",
+                "dims": ["fates_leafage_class", "fates_pft"],
+                "long_name": "maximum carboxylation rate",
+                "units": "umol CO2/m^2/s",
+                "data": [[50.0, 60.0, 70.0], [40.0, 50.0, 60.0]],
+            },
+            "fates_nonhydro_smpso": {
+                "dtype": "float",
+                "dims": ["fates_pft"],
+                "long_name": "soil water potential at full stomatal opening",
+                "units": "mm",
+                "data": [-50000.0, -60000.0, -70000.0],
+            },
+            "fates_nonhydro_smpsc": {
+                "dtype": "float",
+                "dims": ["fates_pft"],
+                "long_name": "soil water potential at full stomatal closing",
+                "units": "mm",
+                "data": [-100000.0, -110000.0, -120000.0],
+            },
+            "fates_leafn_vert_scaler_coeff1": {
+                "dtype": "float",
+                "dims": ["fates_pft"],
+                "long_name": "leaf nitrogen scaler coeff1",
+                "units": "unitless",
+                "data": [0.012, 0.015, 0.005],
+            },
+            "fates_leafn_vert_scaler_coeff2": {
+                "dtype": "float",
+                "dims": ["fates_pft"],
+                "long_name": "leaf nitrogen scaler coeff2",
+                "units": "unitless",
+                "data": [2.1, 2.5, 2.6],
+            },
+            "parameter_a": {
+                "dtype": "float",
+                "dims": ["dim_1", "dim_2"],
+                "long_name": "test multi-dim parameter",
+                "units": "unitless",
+                "data": [[50.0, 60.0, 70.0], [40.0, 50.0, 60.0]],
+            },
+        },
+    }
+    path = tmp_path / "default.json"
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(data, f)
+    return path
+
+
+@pytest.fixture
+def json_dataset(json_param_file) -> FATESJSONParameterDataset:
+    """A FATESJSONParameterDataset loaded from json_param_file."""
+    return FATESJSONParameterDataset.load(json_param_file)

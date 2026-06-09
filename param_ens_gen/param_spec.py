@@ -29,6 +29,7 @@ class ParamSpec:  # pylint: disable=too-many-instance-attributes
         'default' and some 'sliced' types it matches the netCDF variable
         name directly. For 'joint' and 'scale_from_root' types the
         actual parameter(s) are in base_params.
+    original_name: str  # always the actual variable name, unchanged by expansion
     category: str
         Parameter category; useful description for grouping parameters
     subcategory: str
@@ -65,6 +66,7 @@ class ParamSpec:  # pylint: disable=too-many-instance-attributes
     """
 
     name: str
+    original_name: str
     long_name: str
     category: str
     subcategory: str
@@ -129,6 +131,7 @@ class ParamSpec:  # pylint: disable=too-many-instance-attributes
 
         return cls(
             name=str(row["parameter_name"]),
+            original_name=str(row["parameter_name"]),
             category=str(row.get("category", "")),
             subcategory=str(row.get("subcategory", "")),
             long_name=str(row.get("long_name", "")),
@@ -154,7 +157,7 @@ def _is_nan(value: float) -> bool:
     """Return True if value is a float NaN."""
     try:
         return math.isnan(value)
-    except TypeError:
+    except TypeError:  # pragma: no cover
         # this should be caught by the calling method but
         # putting here as a failsafe
         return False

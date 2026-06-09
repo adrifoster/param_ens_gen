@@ -42,6 +42,23 @@ def test_default_get_default_scalar(scalar_row, default_ds):
     assert float(result) == pytest.approx(0.5)
 
 
+def test_default_get_default_returns_scalar_when_expanded(default_row, default_ds):
+    """get_default returns a scalar when active_index is set."""
+    param = Parameter.from_row(default_row, default_ds)
+    param.active_index = DimIndex("fates_pft", 1)
+    result = param.get_default(default_ds)
+    assert np.ndim(result) == 0
+    assert float(result) == pytest.approx(0.020)
+
+
+def test_default_get_default_returns_array_when_not_expanded(default_row, default_ds):
+    """get_default returns full array when active_index is None."""
+    param = Parameter.from_row(default_row, default_ds)
+    result = param.get_default(default_ds)
+    assert isinstance(result, np.ndarray)
+    assert result.shape == (3,)
+
+
 def test_default_set_value_uniform_no_fixed(default_row, default_ds, working_ds):
     """DefaultParameter.set_value writes value to all array positions with a scalar."""
     param = Parameter.from_row(default_row, default_ds)

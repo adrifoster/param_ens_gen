@@ -381,7 +381,7 @@ def _validate_bounds(
     Raises:
         ValueError: Parameter min > max
     """
-    if min_val is None or max_val is None:
+    if min_val is None or max_val is None:  # pragma: no cover
         raise ValueError(
             f"Parameter min or max is None  - cannot scale "
             f"(min={min_val}, max={max_val}). Check inputs"

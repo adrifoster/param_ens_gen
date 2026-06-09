@@ -26,16 +26,35 @@ class ParameterSample:
 
     Attributes
     ----------
-    parameter: Parameter
-        The parameter being samples.
+    group: ParamGroup
+        The group of parameters being sampled together
     normalized_value: float
         A value in [0, 1]. For uniform parameters this is passed to a scaler to produce
         an actual value. For posterior parameters this is used as a quantile index into
         the posterior distribution.
     """
 
-    parameter: Parameter
+    group: ParamGroup
     normalized_value: float
+
+
+@dataclass
+class ParamGroup:
+    """A group of parameters that share the same normalized sample value.
+
+    For grouped parameters, all parameters in the group get the same normalized
+    value. For ungrouped parameters, the group contains a single parameter.
+
+    Attributes
+    ----------
+    name : str
+        Group name, or parameter spec name for ungrouped parameters.
+    params : list[Parameter]
+        Parameters in this group.
+    """
+
+    name: str
+    params: list[Parameter]
 
 
 @dataclass
@@ -151,7 +170,18 @@ class ParamEnsemble(ABC):
                 for _, row in main.iterrows()
             ]
         )
+
+        # if we have expand_dims on a parameter, expand them to be one per expanded index
         self._expand_params()
+
+        # validate grouped parameters - we can't mix expanded dims within a group
+        self._validate_groups()
+
+        # build the groups
+        self.sampling_units: list[ParamGroup] = []
+        self._build_sampling_units()
+
+        self.num_sampling_units = len(self.sampling_units)
         self.num_params = len(self.params)
 
     @classmethod
@@ -294,6 +324,83 @@ class ParamEnsemble(ABC):
                 result.append(param)
         self.params = result
 
+    def _validate_groups(self):
+        """Validate group constraints.
+
+        Raises:
+            ValueError: If a group contains parameters with mixed expand_dim values.
+            ValueError: If a scale_from_root param and its root are in different groups.
+        """
+        # validate scale_from_root params and their roots are in the same group
+        for param in self.params:
+            if param.spec.root_param is None:
+                continue
+            root = next(
+                (
+                    p
+                    for p in self.params
+                    if p.spec.name == param.spec.root_param
+                    or (
+                        param.active_index is not None
+                        and p.spec.name
+                        == f"{param.spec.root_param}_{param.active_index.index}"
+                    )
+                ),
+                None,
+            )
+            if root is None:
+                continue
+            if param.spec.group_name != root.spec.group_name:
+                raise ValueError(
+                    f"Parameter '{param.spec.name}' (scale_from_root) is in group "
+                    f"'{param.spec.group_name}' but its root '{param.spec.root_param}' "
+                    f"is in group '{root.spec.group_name}'. "
+                    "A scale_from_root parameter and its root must be in the same group "
+                    "or both ungrouped."
+                )
+
+        # validate all params in a group have the same expand_dim
+        groups: dict[str, list[str | None]] = {}
+        for param in self.params:
+            group = param.spec.group_name
+            if group is None:
+                continue
+            if group not in groups:
+                groups[group] = []
+            groups[group].append(param.spec.expand_dim)
+
+        for group, expand_dims in groups.items():
+            unique = set(expand_dims)
+            if len(unique) > 1:
+                raise ValueError(
+                    f"Group '{group}' contains parameters with mixed expand_dim values: "
+                    f"{sorted(str(d) for d in unique)}. "
+                    "All parameters in a group must have the same expand_dim, or all None."
+                )
+
+    def _build_sampling_units(self):
+        """Build sampling units from params list.
+
+        Each group becomes one sampling unit. Ungrouped parameters each become their
+        own singleton sampling unit
+        """
+        group_lookup: dict[str, ParamGroup] = {}
+        self.sampling_units: list[ParamGroup] = []
+
+        for param in self.params:
+            group_name = param.spec.group_name
+            if group_name is None:
+                # ungrouped - one sampling unit per parameter
+                self.sampling_units.append(
+                    ParamGroup(name=param.spec.name, params=[param])
+                )
+            else:
+                if group_name not in group_lookup:
+                    new_group = ParamGroup(name=group_name, params=[])
+                    group_lookup[group_name] = new_group
+                    self.sampling_units.append(new_group)
+                group_lookup[group_name].params.append(param)
+
 
 class LatinHypercubeEnsemble(ParamEnsemble, ensemble_type="LatinHypercube"):
     """Concrete class for the Latin Hypercube ensemble class
@@ -362,10 +469,10 @@ class LatinHypercubeEnsemble(ParamEnsemble, ensemble_type="LatinHypercube"):
             ensemble_member = EnsembleMemberSample(
                 parameter_samples=[
                     ParameterSample(
-                        parameter=param,
+                        group=group,
                         normalized_value=float(latin_hypercube[i, j]),
                     )
-                    for j, param in enumerate(self.params)
+                    for j, group in enumerate(self.sampling_units)
                 ]
             )
             samples.append(ensemble_member)
@@ -383,17 +490,12 @@ class LatinHypercubeEnsemble(ParamEnsemble, ensemble_type="LatinHypercube"):
         """
 
         ds = self.default_ds.copy()
-
         for param_sample in sample:
-            param = param_sample.parameter
-            normalized_value = param_sample.normalized_value
-
-            value = param.sample(normalized_value, self.default_ds)
-
-            param.set_value(
-                ds, self.default_ds, value, fixed_indices=self.fixed_indices
-            )
-
+            for param in param_sample.group.params:
+                value = param.sample(param_sample.normalized_value, self.default_ds)
+                param.set_value(
+                    ds, self.default_ds, value, fixed_indices=self.fixed_indices
+                )
         return ds
 
     def create_ensemble_key(self, samples: list[EnsembleMemberSample]) -> pd.DataFrame:
@@ -409,12 +511,12 @@ class LatinHypercubeEnsemble(ParamEnsemble, ensemble_type="LatinHypercube"):
 
         param_dfs = []
         for i, sample in enumerate(samples):
-            parameter_names = []
+            group_names = []
             sample_values = []
             for param_sample in sample:
-                parameter_names.append(param_sample.parameter.spec.name)
+                group_names.append(param_sample.group.name)
                 sample_values.append(param_sample.normalized_value)
-            df = pd.DataFrame({"parameter": parameter_names, "value": sample_values})
+            df = pd.DataFrame({"parameter": group_names, "value": sample_values})
             df["ensemble"] = f"{self.file_prefix}_{_generate_suffix(i)}"
             param_dfs.append(df)
         param_df = pd.concat(param_dfs, ignore_index=True)
@@ -437,23 +539,23 @@ class LatinHypercubeEnsemble(ParamEnsemble, ensemble_type="LatinHypercube"):
         Returns:
             np.ndarray: output Latin Hypercube array
         """
-        if self.num_params == 0:
+        if self.num_sampling_units == 0:
             return np.empty((self.n_samples, 0))
 
         # validate pre-built LH
         if prebuilt is not None:
-            if prebuilt.shape != (self.n_samples, len(self.params)):
+            if prebuilt.shape != (self.n_samples, self.num_sampling_units):
                 raise ValueError(
                     f"Pre-built LH sample has shape {prebuilt.shape}, "
-                    f"expected ({self.n_samples}, {len(self.params)})."
+                    f"expected ({self.n_samples}, {self.num_sampling_units})."
                 )
             return prebuilt
 
         # otherwise generate one
-        return qmc.LatinHypercube(d=len(self.params)).random(n=self.n_samples)
+        return qmc.LatinHypercube(d=self.num_sampling_units).random(n=self.n_samples)
 
 
-class OneAtATimeParameterEnsemble(ParamEnsemble, ensemble_type="OAT"):
+class OneAtATimeEnsemble(ParamEnsemble, ensemble_type="OAT"):
     """Concrete class for the One-at-a-time (OAT) ensemble class"""
 
     def __init__(
@@ -463,7 +565,7 @@ class OneAtATimeParameterEnsemble(ParamEnsemble, ensemble_type="OAT"):
         super().__init__(config)
 
     @classmethod
-    def from_config(cls, config: dict) -> OneAtATimeParameterEnsemble:
+    def from_config(cls, config: dict) -> OneAtATimeEnsemble:
         """Construct from a plain dict (ensemble_type already removed)
 
         Args:
@@ -474,7 +576,7 @@ class OneAtATimeParameterEnsemble(ParamEnsemble, ensemble_type="OAT"):
             TypeError: Uncrecogized or missing keys
 
         Returns:
-            OneAtATimeParameterEnsemble: A fully constructed ensemble OneAtATimeParameterEnsemble
+            OneAtATimeEnsemble: A fully constructed ensemble OneAtATimeEnsemble
             instance.
         """
         try:
@@ -495,12 +597,12 @@ class OneAtATimeParameterEnsemble(ParamEnsemble, ensemble_type="OAT"):
         """
 
         samples = []
-        for param in self.params:
+        for group in self.sampling_units:
             samples.append(
-                EnsembleMemberSample([ParameterSample(param, 0.0)])  # minimum
+                EnsembleMemberSample([ParameterSample(group, 0.0)])  # minimum
             )
             samples.append(
-                EnsembleMemberSample([ParameterSample(param, 1.0)])  # maximum
+                EnsembleMemberSample([ParameterSample(group, 1.0)])  # maximum
             )
         return samples
 
@@ -520,12 +622,12 @@ class OneAtATimeParameterEnsemble(ParamEnsemble, ensemble_type="OAT"):
             )
 
         param_sample = sample.parameter_samples[0]
-        param = param_sample.parameter
-        normalized_value = param_sample.normalized_value
-
         ds = self.default_ds.copy()
-        value = param.sample(normalized_value, self.default_ds)
-        param.set_value(ds, self.default_ds, value, fixed_indices=self.fixed_indices)
+        for param in param_sample.group.params:
+            value = param.sample(param_sample.normalized_value, self.default_ds)
+            param.set_value(
+                ds, self.default_ds, value, fixed_indices=self.fixed_indices
+            )
 
         return ds
 
@@ -539,7 +641,7 @@ class OneAtATimeParameterEnsemble(ParamEnsemble, ensemble_type="OAT"):
         Returns:
             pd.DataFrame: output data frame that serves as ensemble key
         """
-        parameter_names = []
+        group_names = []
         ensembles = []
         values = []
         for i, sample in enumerate(samples):
@@ -550,16 +652,14 @@ class OneAtATimeParameterEnsemble(ParamEnsemble, ensemble_type="OAT"):
                 )
 
             param_sample = sample.parameter_samples[0]
-            param = param_sample.parameter
-            normalized_value = param_sample.normalized_value
-            parameter_names.append(param.spec.name)
-            values.append(normalized_value)
+            group_names.append(param_sample.group.name)
+            values.append(param_sample.normalized_value)
             ensembles.append(f"{self.file_prefix}_{_generate_suffix(i)}")
 
         param_df = pd.DataFrame(
             {
                 "ensemble": ensembles,
-                "parameter": parameter_names,
+                "parameter": group_names,
                 "normalized_value": values,
             }
         )

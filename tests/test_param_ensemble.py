@@ -9,12 +9,13 @@ import pandas as pd
 from param_ens_gen.param_ensemble import (
     ParamEnsemble,
     LatinHypercubeEnsemble,
-    OneAtATimeParameterEnsemble,
+    OneAtATimeEnsemble,
     EnsembleMemberSample,
     ParameterSample,
+    ParamGroup,
 )
 
-from param_ens_gen.ensemble_config import LatinHypercubeConfig
+from param_ens_gen.ensemble_config import LatinHypercubeConfig, OneAtATimeConfig
 from param_ens_gen.parameter import DimIndex, Parameter
 from param_ens_gen.parameter_dataset import ParameterDataset
 
@@ -102,7 +103,7 @@ def test_from_dict_valid_oat(
             "posterior_sources": posterior_config_file,
         }
     )
-    assert isinstance(ensemble, OneAtATimeParameterEnsemble)
+    assert isinstance(ensemble, OneAtATimeEnsemble)
 
 
 def test_from_dict_invalid_oat(
@@ -360,23 +361,103 @@ def test_fixed_indices_negative_index_raises(
         LatinHypercubeEnsemble(config)
 
 
+def test_grouped_params_constructs_successfully(
+    grouped_param_dir, default_param_file, tmp_path
+):
+    """ParamEnsemble constructs without error when groups are valid."""
+    config = LatinHypercubeConfig(
+        param_dir=grouped_param_dir,
+        ensemble_dir=tmp_path / "ensemble",
+        file_prefix="test",
+        default_param_file=default_param_file,
+        ensemble_members=5,
+    )
+    ensemble = LatinHypercubeEnsemble(config)
+    assert ensemble is not None
+
+
+def test_scale_from_root_different_group_raises(
+    scale_from_root_different_group_dir, default_param_file, tmp_path
+):
+    """ParamEnsemble raises ValueError when scale_from_root and root are in different groups."""
+    config = LatinHypercubeConfig(
+        param_dir=scale_from_root_different_group_dir,
+        ensemble_dir=tmp_path / "ensemble",
+        file_prefix="test",
+        default_param_file=default_param_file,
+        ensemble_members=5,
+    )
+    with pytest.raises(ValueError, match="same group"):
+        LatinHypercubeEnsemble(config)
+
+
+def test_scale_from_root_root_not_varied_is_valid(tmp_path, default_param_file):
+    """ParamEnsemble constructs when scale_from_root root is not being varied."""
+    pd.DataFrame(
+        [
+            {
+                "parameter_name": "smpsc_delta",
+                "long_name": "Soil water potential at full stomatal closing (delta)",
+                "category": "stomatal",
+                "subcategory": "vegetation water",
+                "units": "mm",
+                "coord": "['fates_pft']",
+                "param_type": "scale_from_root",
+                "strategy": "uniform",
+                "param_min": "-600000",
+                "param_max": "-20000",
+                "slice_dim": None,
+                "slice_index": None,
+                "root_param": "fates_nonhydro_smpso",
+                "base_params": "fates_nonhydro_smpsc",
+                "group_name": "soil",
+            },
+        ]
+    ).to_csv(tmp_path / "main.csv", index=False)
+
+    config = LatinHypercubeConfig(
+        param_dir=tmp_path,
+        ensemble_dir=tmp_path / "ensemble",
+        file_prefix="test",
+        default_param_file=default_param_file,
+        ensemble_members=5,
+    )
+    ensemble = LatinHypercubeEnsemble(config)
+    assert ensemble is not None
+
+
+def test_mixed_expand_dim_group_raises(
+    mixed_expand_dim_group_dir, default_param_file, tmp_path
+):
+    """ParamEnsemble raises ValueError when a group has mixed expand_dim values."""
+    config = LatinHypercubeConfig(
+        param_dir=mixed_expand_dim_group_dir,
+        ensemble_dir=tmp_path / "ensemble",
+        file_prefix="test",
+        default_param_file=default_param_file,
+        ensemble_members=5,
+    )
+    with pytest.raises(ValueError, match="mixed expand_dim"):
+        LatinHypercubeEnsemble(config)
+
+
 def test_build_lh_shape(lh_ensemble):
     """Test that build_lh builds a Latin Hypercube with the correct shape"""
     lh = lh_ensemble.build_lh()
-    assert lh.shape == (5, lh_ensemble.num_params)
+    assert lh.shape == (5, lh_ensemble.num_sampling_units)
     assert np.all(lh >= 0.0) and np.all(lh <= 1.0)
 
 
 def test_build_lh_prebuilt(lh_ensemble):
     """Test that build_lh with a correct pre-built LH returns that pre-built array"""
-    prebuilt = np.random.default_rng(0).random((5, lh_ensemble.num_params))
+    prebuilt = np.random.default_rng(0).random((5, lh_ensemble.num_sampling_units))
     lh = lh_ensemble.build_lh(prebuilt=prebuilt)
     np.testing.assert_array_equal(lh, prebuilt)
 
 
 def test_build_lh_prebuilt_wrong_samples(lh_ensemble):
     """Test that build_lh given an incorrect (wrong num samples) pre-built LH raises"""
-    bad = np.random.default_rng(0).random((10, lh_ensemble.num_params))
+    bad = np.random.default_rng(0).random((10, lh_ensemble.num_sampling_units))
     with pytest.raises(ValueError, match="shape"):
         lh_ensemble.build_lh(prebuilt=bad)
 
@@ -390,7 +471,7 @@ def test_build_lh_prebuilt_wrong_params(lh_ensemble):
 
 def test_build_lh_zero_params(lh_ensemble):
     """Test that build_lh with zero params returns something"""
-    lh_ensemble.num_params = 0
+    lh_ensemble.num_sampling_units = 0
     lh = lh_ensemble.build_lh()
     assert lh.shape == (5, 0)
 
@@ -405,7 +486,7 @@ def test_lh_create_samples_structure(lh_ensemble):
     """Test that create_samples returns the correct structure"""
     samples = lh_ensemble.create_samples()
     for sample in samples:
-        assert len(sample) == lh_ensemble.num_params
+        assert len(sample) == lh_ensemble.num_sampling_units
         for ps in sample:
             assert 0.0 <= ps.normalized_value <= 1.0
 
@@ -413,7 +494,7 @@ def test_lh_create_samples_structure(lh_ensemble):
 def test_oat_create_samples_length(oat_ensemble):
     """Test that OAT produces 2 samples per parameter (min and max)."""
     samples = oat_ensemble.create_samples()
-    assert len(samples) == 2 * oat_ensemble.num_params
+    assert len(samples) == 2 * oat_ensemble.num_sampling_units
 
 
 def test_oat_create_samples_values(oat_ensemble):
@@ -471,7 +552,9 @@ def test_oat_create_ensemble_key_wrong_length_raises(oat_ensemble, lh_ensemble):
 def test_oat_create_ensemble_key_bad_direction_raises(oat_ensemble):
     """Test that create_ensemble_key raises if normalized_value is not 0.0 or 1.0."""
     param = oat_ensemble.params[0]
-    bad_sample = EnsembleMemberSample([ParameterSample(param, 0.5)])
+    bad_sample = EnsembleMemberSample(
+        [ParameterSample(ParamGroup(name=param.spec.name, params=[param]), 0.5)]
+    )
     with pytest.raises(ValueError, match="expects only 0.0 or 1.0"):
         oat_ensemble.create_ensemble_key([bad_sample])
 
@@ -583,3 +666,96 @@ def test_expand_params_unknown_expand_dim_raises(tmp_path, default_param_file):
     )
     with pytest.raises(ValueError, match="not found in default_ds"):
         LatinHypercubeEnsemble(config)
+
+
+def test_grouped_params_num_sampling_units(
+    grouped_param_dir, default_param_file, tmp_path
+):
+    """num_sampling_units is less than num_params when groups exist."""
+    config = LatinHypercubeConfig(
+        param_dir=grouped_param_dir,
+        ensemble_dir=tmp_path / "ensemble",
+        file_prefix="test",
+        default_param_file=default_param_file,
+        ensemble_members=5,
+    )
+    ensemble = LatinHypercubeEnsemble(config)
+    # 2 params in "photosynthesis" group + 6 expanded params in "water" group + 1 ungrouped
+    # = 9 params, 3 sampling units
+    assert ensemble.num_params == 9
+    assert ensemble.num_sampling_units == 3
+
+
+def test_grouped_params_share_normalized_value(
+    grouped_param_dir, default_param_file, tmp_path
+):
+    """Params in the same group get the same normalized value in create_samples."""
+    config = LatinHypercubeConfig(
+        param_dir=grouped_param_dir,
+        ensemble_dir=tmp_path / "ensemble",
+        file_prefix="test",
+        default_param_file=default_param_file,
+        ensemble_members=5,
+    )
+    ensemble = LatinHypercubeEnsemble(config)
+    samples = ensemble.create_samples()
+    for sample in samples:
+        photo_sample = next(ps for ps in sample if ps.group.name == "photosynthesis")
+        # all params in the group share the same normalized value
+        assert len(photo_sample.group.params) == 2
+
+
+def test_grouped_oat_produces_correct_number_of_members(
+    grouped_param_dir, default_param_file, tmp_path
+):
+    """OAT produces 2 members per sampling unit, not per parameter."""
+
+    config = OneAtATimeConfig(
+        param_dir=grouped_param_dir,
+        ensemble_dir=tmp_path / "ensemble",
+        file_prefix="test",
+        default_param_file=default_param_file,
+    )
+    ensemble = OneAtATimeEnsemble(config)
+    samples = ensemble.create_samples()
+    assert len(samples) == 2 * ensemble.num_sampling_units
+    assert len(samples) < 2 * ensemble.num_params
+
+
+def test_grouped_ensemble_key_uses_group_names(
+    grouped_param_dir, default_param_file, tmp_path
+):
+    """Ensemble key columns use group names, not individual parameter names."""
+    config = LatinHypercubeConfig(
+        param_dir=grouped_param_dir,
+        ensemble_dir=tmp_path / "ensemble",
+        file_prefix="test",
+        default_param_file=default_param_file,
+        ensemble_members=5,
+    )
+    ensemble = LatinHypercubeEnsemble(config)
+    samples = ensemble.create_samples()
+    key = ensemble.create_ensemble_key(samples)
+    assert "photosynthesis" in key.columns
+    assert "fates_canopy_closure_thresh" in key.columns
+    # individual param names should not appear as columns
+    assert "fates_leaf_slatop" not in key.columns
+    assert "fates_nonhydro_smpso" not in key.columns
+
+
+def test_grouped_ensemble_member_writes_all_params(
+    grouped_param_dir, default_param_file, tmp_path
+):
+    """create_ensemble_member writes values for all params in a group."""
+    config = LatinHypercubeConfig(
+        param_dir=grouped_param_dir,
+        ensemble_dir=tmp_path / "ensemble",
+        file_prefix="test",
+        default_param_file=default_param_file,
+        ensemble_members=5,
+    )
+    ensemble = LatinHypercubeEnsemble(config)
+    samples = ensemble.create_samples()
+    ds = ensemble.create_ensemble_member(samples[0])
+    assert "fates_leaf_slatop" in ds
+    assert "fates_canopy_closure_thresh" in ds

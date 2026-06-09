@@ -88,6 +88,23 @@ def test_sliced_get_default(sliced_row, default_ds):
     np.testing.assert_allclose(result, [50.0, 60.0, 70.0])
 
 
+def test_sliced_get_default_returns_scalar_when_expanded(sliced_row, default_ds):
+    """get_default returns a scalar when active_index is set."""
+    param = Parameter.from_row(sliced_row, default_ds)
+    param.active_index = DimIndex("fates_pft", 1)
+    result = param.get_default(default_ds)
+    assert np.ndim(result) == 0
+    assert float(result) == pytest.approx(60.0)
+
+
+def test_sliced_get_default_returns_array_when_not_expanded(sliced_row, default_ds):
+    """get_default returns full slice array when active_index is None."""
+    param = Parameter.from_row(sliced_row, default_ds)
+    result = param.get_default(default_ds)
+    assert isinstance(result, np.ndarray)
+    assert result.shape == (3,)
+
+
 def test_sliced_param_set_value_active_index_sets_correct_element(
     sliced_param, working_ds, default_ds
 ):

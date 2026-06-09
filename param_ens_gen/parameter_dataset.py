@@ -199,6 +199,11 @@ class NetCDFParameterDataset(ParameterDataset):
         return var in self._ds
 
     def __getitem__(self, var: str) -> NetCDFParameterVariable:
+        if var not in self._ds:
+            raise KeyError(
+                f"Variable '{var}' not found in dataset. "
+                f"Available variables: {sorted(self._ds.data_vars)}"
+            )
         return NetCDFParameterVariable(self._ds[var])
 
     def copy(self) -> NetCDFParameterDataset:
@@ -318,9 +323,12 @@ class FATESJSONParameterDataset(ParameterDataset):
         return var in self._params
 
     def __getitem__(self, var: str) -> FATESJSONParameterVariable:
+        if var not in self._params:
+            raise KeyError(
+                f"Variable '{var}' not found in dataset. "
+                f"Available variables: {sorted(self._params.keys())}"
+            )
         if var not in self._cache:
-            if var not in self._params:
-                raise KeyError(f"Variable '{var}' not found in dataset.")
             self._cache[var] = FATESJSONParameterVariable(
                 name=var,
                 entry=self._params[var],

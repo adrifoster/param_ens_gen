@@ -42,6 +42,34 @@ def test_joint_get_default(joint_param_row, default_ds, posterior_config):
     np.testing.assert_allclose(result[1], [2.1, 2.5, 2.6])
 
 
+def test_joint_get_default_returns_scalars_when_expanded(
+    joint_param_row, default_ds, posterior_config
+):
+    """get_default returns list of scalars when active_index is set."""
+    param = Parameter.from_row(
+        joint_param_row, default_ds, posterior_config=posterior_config
+    )
+    param.active_index = DimIndex("fates_pft", 1)
+    result = param.get_default(default_ds)
+    assert isinstance(result, list)
+    assert len(result) == 2
+    assert np.ndim(result[0]) == 0
+    assert np.ndim(result[1]) == 0
+
+
+def test_joint_get_default_returns_arrays_when_not_expanded(
+    joint_param_row, default_ds, posterior_config
+):
+    """get_default returns list of full arrays when active_index is None."""
+    param = Parameter.from_row(
+        joint_param_row, default_ds, posterior_config=posterior_config
+    )
+    result = param.get_default(default_ds)
+    assert isinstance(result, list)
+    assert all(isinstance(r, np.ndarray) for r in result)
+    assert all(r.shape == (3,) for r in result)
+
+
 def test_joint_set_value(joint_param_row, default_ds, working_ds, posterior_config):
     """JointParameter.set_value writes each array to its corresponding variable."""
     param = Parameter.from_row(

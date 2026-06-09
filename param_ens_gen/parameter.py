@@ -385,7 +385,10 @@ class DefaultParameter(Parameter, param_type="default"):
     def get_default(
         self, default_ds: ParameterDataset
     ) -> float | np.ndarray | list[np.ndarray]:
-        return default_ds[self.spec.name].values
+        arr = default_ds[self.spec.original_name].values
+        if self.active_index is not None:
+            return arr[self.active_index.index]
+        return arr
 
     def _write_at_index(
         self,
@@ -393,9 +396,9 @@ class DefaultParameter(Parameter, param_type="default"):
         index: DimIndex,
         value: float | np.ndarray | list[np.ndarray],
     ):
-        arr = ds[self.spec.name].values.copy()
-        arr[index.index] = _as_scalar(value, self.spec.name)
-        ds[self.spec.name].values = arr
+        arr = ds[self.spec.original_name].values.copy()
+        arr[index.index] = _as_scalar(value, self.spec.original_name)
+        ds[self.spec.original_name].values = arr
 
     def _write_full(
         self,
@@ -404,10 +407,10 @@ class DefaultParameter(Parameter, param_type="default"):
         value: float | np.ndarray | list[np.ndarray],
         fixed_indices: dict[str, list[int]],
     ):
-        arr = ds[self.spec.name].values.copy()
+        arr = ds[self.spec.original_name].values.copy()
         fixed = fixed_indices.get(self.free_dims[0], []) if self.free_dims else []
-        arr = _broadcast_to_array(arr, value, fixed, self.spec.name)
-        ds[self.spec.name].values = arr
+        arr = _broadcast_to_array(arr, value, fixed, self.spec.original_name)
+        ds[self.spec.original_name].values = arr
 
 
 class SlicedParameter(Parameter, param_type="sliced"):
@@ -440,9 +443,12 @@ class SlicedParameter(Parameter, param_type="sliced"):
         return self.spec.base_params
 
     def get_default(self, default_ds: ParameterDataset) -> np.ndarray:
-        return default_ds[self.spec.base_params[0]].isel(
+        arr = default_ds[self.spec.base_params[0]].isel(
             {self.spec.slice_dim: self.spec.slice_index}
         )
+        if self.active_index is not None:
+            return arr[self.active_index.index]
+        return np.asarray(arr)
 
     def _write_at_index(
         self,
@@ -523,7 +529,10 @@ class ScaleFromRootParameter(Parameter, param_type="scale_from_root"):
         return variables
 
     def get_default(self, default_ds: ParameterDataset) -> np.ndarray:
-        return default_ds[self.spec.base_params[0]].values
+        arr = default_ds[self.spec.base_params[0]].values
+        if self.active_index is not None:
+            return arr[self.active_index.index]
+        return arr
 
     def _write_at_index(
         self,
@@ -583,7 +592,10 @@ class JointParameter(Parameter, param_type="joint"):
         return self.spec.base_params
 
     def get_default(self, default_ds: ParameterDataset) -> list[np.ndarray]:
-        return [default_ds[p].values for p in self.spec.base_params]
+        arrays = [default_ds[p].values for p in self.spec.base_params]
+        if self.active_index is not None:
+            return [arr[self.active_index.index] for arr in arrays]
+        return arrays
 
     def _coerce_value_seq(
         self, value: float | np.ndarray | list[np.ndarray]

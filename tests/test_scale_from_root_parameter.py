@@ -209,3 +209,24 @@ def test_default_ds_not_mutated(scale_param, working_ds, default_ds):
     np.testing.assert_array_equal(
         default_ds["fates_nonhydro_smpsc"].values, original_smpsc
     )
+
+
+def test_scale_from_root_get_default_returns_scalar_when_expanded(
+    scale_from_root_row, default_ds
+):
+    """get_default returns a scalar when active_index is set."""
+    param = Parameter.from_row(scale_from_root_row, default_ds)
+    param.active_index = DimIndex("fates_pft", 1)
+    result = param.get_default(default_ds)
+    assert np.ndim(result) == 0
+    assert float(result) == pytest.approx(-110000.0)
+
+
+def test_scale_from_root_get_default_returns_array_when_not_expanded(
+    scale_from_root_row, default_ds
+):
+    """get_default returns full array when active_index is None."""
+    param = Parameter.from_row(scale_from_root_row, default_ds)
+    result = param.get_default(default_ds)
+    assert isinstance(result, np.ndarray)
+    assert result.shape == (3,)
