@@ -29,6 +29,7 @@ class ParamSpec:  # pylint: disable=too-many-instance-attributes
         'default' and some 'sliced' types it matches the netCDF variable
         name directly. For 'joint' and 'scale_from_root' types the
         actual parameter(s) are in base_params.
+    original_name: str  # always the actual variable name, unchanged by expansion
     category: str
         Parameter category; useful description for grouping parameters
     subcategory: str
@@ -60,9 +61,12 @@ class ParamSpec:  # pylint: disable=too-many-instance-attributes
         None for all other types.
     prcision: str | None
         The precision (i.e., rounding) for the parameter. Defaults to None.
+    group_name: str | None
+        Optional group name, which is used to scale parameters together. Defaults to None.
     """
 
     name: str
+    original_name: str
     long_name: str
     category: str
     subcategory: str
@@ -75,6 +79,7 @@ class ParamSpec:  # pylint: disable=too-many-instance-attributes
     root_param: Optional[str]
     base_params: list[str]
     precision: Optional[str]
+    group_name: Optional[str]
 
     def __post_init__(self):
         """Validate field-level invariants that hold regardless of param_type.
@@ -126,6 +131,7 @@ class ParamSpec:  # pylint: disable=too-many-instance-attributes
 
         return cls(
             name=str(row["parameter_name"]),
+            original_name=str(row["parameter_name"]),
             category=str(row.get("category", "")),
             subcategory=str(row.get("subcategory", "")),
             long_name=str(row.get("long_name", "")),
@@ -138,6 +144,7 @@ class ParamSpec:  # pylint: disable=too-many-instance-attributes
             base_params=_parse_list(row.get("base_params", "")),
             root_param=_parse_optional_str(row.get("root_param")),
             precision=_parse_precision(row.get("precision")),
+            group_name=_parse_optional_str(row.get("group_name")),
         )
 
 
@@ -150,7 +157,7 @@ def _is_nan(value: float) -> bool:
     """Return True if value is a float NaN."""
     try:
         return math.isnan(value)
-    except TypeError:
+    except TypeError:  # pragma: no cover
         # this should be caught by the calling method but
         # putting here as a failsafe
         return False

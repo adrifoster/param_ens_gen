@@ -49,7 +49,7 @@ class SampleContext:
     default_value: float | np.ndarray | list[np.ndarray] | None = None
     array_index: int | None = None
     n_indices: list[int] | None = None
-    pft_axis: int | None = None 
+    pft_axis: int | None = None
 
 
 class Sampler(ABC):
@@ -381,7 +381,7 @@ def _validate_bounds(
     Raises:
         ValueError: Parameter min > max
     """
-    if min_val is None or max_val is None:
+    if min_val is None or max_val is None:  # pragma: no cover
         raise ValueError(
             f"Parameter min or max is None  - cannot scale "
             f"(min={min_val}, max={max_val}). Check inputs"

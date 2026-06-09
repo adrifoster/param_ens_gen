@@ -8,10 +8,10 @@ from typing import NamedTuple, Optional
 import copy
 import pandas as pd
 import numpy as np
-import xarray as xr
 
 from .param_spec import ParamSpec
 from .sampler import Sampler, SampleContext, PosteriorSampler
+from .parameter_dataset import ParameterDataset
 
 
 class DimIndex(NamedTuple):
@@ -54,7 +54,7 @@ class Parameter(ABC):
     def __init__(
         self,
         row: pd.Series,
-        default_ds: xr.Dataset,
+        default_ds: ParameterDataset,
         pft_sheet: pd.DataFrame | None = None,
         posterior_config: dict | None = None,
     ):
@@ -74,7 +74,7 @@ class Parameter(ABC):
     def from_row(
         cls,
         row: pd.Series,
-        default_ds: xr.Dataset,
+        default_ds: ParameterDataset,
         pft_sheet: pd.DataFrame | None = None,
         posterior_config: dict | None = None,
     ) -> Parameter:
@@ -82,7 +82,7 @@ class Parameter(ABC):
 
         Args:
             row (pd.Series): A row from the 'main' sheet DataFrame.
-            default_ds (xr.Dataset): The default parameter dataset.
+            default_ds (ParameterDataset): The default parameter dataset.
             pft_sheet (pd.DataFrame | None, optional): Optional per-PFT bounds sheet.
                 Defaults to None.
             posterior_config (dict | None, optional): Optional posterior sampling
@@ -138,7 +138,7 @@ class Parameter(ABC):
         fields (e.g. DefaultParameter) do not need to override.
         """
 
-    def _validate_params(self, default_ds: xr.Dataset) -> None:
+    def _validate_params(self, default_ds: ParameterDataset) -> None:
         """Check that all variables this parameter touches exist in default_ds
         with the correct dimensions.
 
@@ -147,7 +147,7 @@ class Parameter(ABC):
         access pattern, not a dataset shape change.
 
         Args:
-            default_ds (xr.Dataset): The default parameter dataset.
+            default_ds (ParameterDataset): The default parameter dataset.
 
         Raises:
             ValueError: If a variable is missing or has unexpected dimensions.
@@ -212,7 +212,7 @@ class Parameter(ABC):
     def sample(
         self,
         normalized_value: float,
-        default_ds: xr.Dataset,
+        default_ds: ParameterDataset,
     ) -> float | np.ndarray:
         """Sample a parameter given an input normalized value
 
@@ -223,7 +223,7 @@ class Parameter(ABC):
 
         Args:
             normalized_value (float): normalized value [0-1] used to sample
-            default_ds (xr.Dataset): default parameter dataset. used for validating
+            default_ds (ParameterDataset): default parameter dataset. used for validating
                 dimensions and indices
             fixed_indices (dict[str, list[int]]): 0-based indices to hold at default.
 
@@ -261,12 +261,12 @@ class Parameter(ABC):
     @abstractmethod
     def get_default(
         self,
-        default_ds: xr.Dataset,
+        default_ds: ParameterDataset,
     ) -> float | np.ndarray | list[np.ndarray]:
         """Extract the relevant default value(s) from a netCDF dataset.
 
         Args:
-            default_ds (xr.Dataset): The default parameter dataset
+            default_ds (ParameterDataset): The default parameter dataset
 
         Returns:
             float | np.ndarray | list[np.ndarray]: default value
@@ -274,16 +274,17 @@ class Parameter(ABC):
 
     def set_value(
         self,
-        ds: xr.Dataset,
-        default_ds: xr.Dataset,
+        ds: ParameterDataset,
+        default_ds: ParameterDataset,
         value: float | np.ndarray | list[np.ndarray],
         fixed_indices: dict[str, list[int]] | None = None,
     ) -> None:
         """Write a value into the working dataset.
 
         Args:
-            ds (xr.Dataset): Working copy of the parameter dataset. Modified in place.
-            default_ds (xr.Dataset): Unchanging default dataset. Used to restore fixed positions.
+            ds (ParameterDataset): Working copy of the parameter dataset. Modified in place.
+            default_ds (ParameterDataset): Unchanging default dataset. Used to restore fixed
+                positions.
             value (float | np.ndarray | list[np.ndarray]): Value to write
             fixed_indices (dict[str, list[int]] | None): Run-level mapping of dimension to
                 0-based indices to hold at default. None means no indices are fixed
@@ -297,7 +298,7 @@ class Parameter(ABC):
     @abstractmethod
     def _write_at_index(
         self,
-        ds: xr.Dataset,
+        ds: ParameterDataset,
         index: DimIndex,
         value: float | np.ndarray | list[np.ndarray],
     ) -> None:
@@ -308,7 +309,7 @@ class Parameter(ABC):
         should enforce this via ``_as_scalar``.
 
         Args:
-            ds (xr.Dataset): Working copy of the parameter dataset. Modified in place.
+            ds (ParameterDataset): Working copy of the parameter dataset. Modified in place.
             index (DimIndex): The dimension and position to write.
             value (float | np.ndarray | list[np.ndarray]): Scalar value to write.
         """
@@ -316,22 +317,22 @@ class Parameter(ABC):
     @abstractmethod
     def _write_full(
         self,
-        ds: xr.Dataset,
-        default_ds: xr.Dataset,
+        ds: ParameterDataset,
+        default_ds: ParameterDataset,
         value: float | np.ndarray | list[np.ndarray],
         fixed_indices: dict[str, list[int]],
     ) -> None:
         """Broadcast a value across all non-fixed positions in the dataset.
 
-        Called when this parameter is not expanded (``active_index`` is None).
-        ``value`` is either a scalar (broadcast to all free positions) or a
+        Called when this parameter is not expanded (active_index is None).
+        value is either a scalar (broadcast to all free positions) or a
         full-dimension array (the sampler always sees the full dimension).
-        ``fixed_indices`` is applied as a post-processing mask: those positions
-        are restored from ``default_ds`` after writing.
+        fixed_indices is applied as a post-processing mask: those positions
+        are restored from default_ds after writing.
 
         Args:
-            ds (xr.Dataset): Working copy of the parameter dataset. Modified in place.
-            default_ds (xr.Dataset): Unchanging default dataset. Used to restore
+            ds (ParameterDataset): Working copy of the parameter dataset. Modified in place.
+            default_ds (ParameterDataset): Unchanging default dataset. Used to restore
                 fixed positions.
             value (float | np.ndarray | list[np.ndarray]): Scalar or full-dimension
                 array value to write.
@@ -383,31 +384,34 @@ class DefaultParameter(Parameter, param_type="default"):
         return [self.spec.name]
 
     def get_default(
-        self, default_ds: xr.Dataset
+        self, default_ds: ParameterDataset
     ) -> float | np.ndarray | list[np.ndarray]:
-        return default_ds[self.spec.name].values
+        arr = default_ds[self.spec.original_name].values
+        if self.active_index is not None:
+            return arr[self.active_index.index]
+        return arr
 
     def _write_at_index(
         self,
-        ds: xr.Dataset,
+        ds: ParameterDataset,
         index: DimIndex,
         value: float | np.ndarray | list[np.ndarray],
     ):
-        arr = ds[self.spec.name].values.copy()
-        arr[index.index] = _as_scalar(value, self.spec.name)
-        ds[self.spec.name].values = arr
+        arr = ds[self.spec.original_name].values.copy()
+        arr[index.index] = _as_scalar(value, self.spec.original_name)
+        ds[self.spec.original_name].values = arr
 
     def _write_full(
         self,
-        ds: xr.Dataset,
-        default_ds: xr.Dataset,
+        ds: ParameterDataset,
+        default_ds: ParameterDataset,
         value: float | np.ndarray | list[np.ndarray],
         fixed_indices: dict[str, list[int]],
     ):
-        arr = ds[self.spec.name].values.copy()
+        arr = ds[self.spec.original_name].values.copy()
         fixed = fixed_indices.get(self.free_dims[0], []) if self.free_dims else []
-        arr = _broadcast_to_array(arr, value, fixed, self.spec.name)
-        ds[self.spec.name].values = arr
+        arr = _broadcast_to_array(arr, value, fixed, self.spec.original_name)
+        ds[self.spec.original_name].values = arr
 
 
 class SlicedParameter(Parameter, param_type="sliced"):
@@ -439,16 +443,17 @@ class SlicedParameter(Parameter, param_type="sliced"):
     def _variables_to_validate(self) -> list[str]:
         return self.spec.base_params
 
-    def get_default(self, default_ds: xr.Dataset) -> np.ndarray:
-        return (
-            default_ds[self.spec.base_params[0]]
-            .isel({self.spec.slice_dim: self.spec.slice_index})
-            .values
+    def get_default(self, default_ds: ParameterDataset) -> np.ndarray:
+        arr = default_ds[self.spec.base_params[0]].isel(
+            {self.spec.slice_dim: self.spec.slice_index}
         )
+        if self.active_index is not None:
+            return arr[self.active_index.index]
+        return np.asarray(arr)
 
     def _write_at_index(
         self,
-        ds: xr.Dataset,
+        ds: ParameterDataset,
         index: DimIndex,
         value: float | np.ndarray | list[np.ndarray],
     ):
@@ -469,8 +474,8 @@ class SlicedParameter(Parameter, param_type="sliced"):
 
     def _write_full(
         self,
-        ds: xr.Dataset,
-        default_ds: xr.Dataset,
+        ds: ParameterDataset,
+        default_ds: ParameterDataset,
         value: float | np.ndarray | list[np.ndarray],
         fixed_indices: dict[str, list[int]] | None = None,
     ):
@@ -524,12 +529,15 @@ class ScaleFromRootParameter(Parameter, param_type="scale_from_root"):
             variables.append(self.spec.root_param)
         return variables
 
-    def get_default(self, default_ds: xr.Dataset) -> np.ndarray:
-        return default_ds[self.spec.base_params[0]].values
+    def get_default(self, default_ds: ParameterDataset) -> np.ndarray:
+        arr = default_ds[self.spec.base_params[0]].values
+        if self.active_index is not None:
+            return arr[self.active_index.index]
+        return arr
 
     def _write_at_index(
         self,
-        ds: xr.Dataset,
+        ds: ParameterDataset,
         index: DimIndex,
         value: float | np.ndarray | list[np.ndarray],
     ):
@@ -543,8 +551,8 @@ class ScaleFromRootParameter(Parameter, param_type="scale_from_root"):
 
     def _write_full(
         self,
-        ds: xr.Dataset,
-        default_ds: xr.Dataset,
+        ds: ParameterDataset,
+        default_ds: ParameterDataset,
         value: float | np.ndarray | list[np.ndarray],
         fixed_indices: dict[str, list[int]],
     ):
@@ -565,11 +573,11 @@ class ScaleFromRootParameter(Parameter, param_type="scale_from_root"):
 class JointParameter(Parameter, param_type="joint"):
     """Parameter which stands for multiple connected parameters (e.g. posterior draws).
 
-    The ``value`` passed to ``set_value`` and returned by ``sample`` is a
-    sequence of arrays — one per entry in ``spec.base_params``.  The type
-    annotations on the base class use ``float | np.ndarray | list[np.ndarray]``
-    for generality, but for this subclass only ``list[np.ndarray]`` (or any
-    sequence of array-likes of the same length as ``base_params``) is valid.
+    The value passed to set_value and returned by sample is a
+    sequence of arrays — one per entry in spec.base_params.  The type
+    annotations on the base class use float | np.ndarray | list[np.ndarray]
+    for generality, but for this subclass only list[np.ndarray] (or any
+    sequence of array-likes of the same length as base_params) is valid.
 
     """
 
@@ -584,8 +592,11 @@ class JointParameter(Parameter, param_type="joint"):
     def _variables_to_validate(self) -> list[str]:
         return self.spec.base_params
 
-    def get_default(self, default_ds: xr.Dataset) -> list[np.ndarray]:
-        return [default_ds[p].values for p in self.spec.base_params]
+    def get_default(self, default_ds: ParameterDataset) -> list[np.ndarray]:
+        arrays = [default_ds[p].values for p in self.spec.base_params]
+        if self.active_index is not None:
+            return [arr[self.active_index.index] for arr in arrays]
+        return arrays
 
     def _coerce_value_seq(
         self, value: float | np.ndarray | list[np.ndarray]
@@ -616,15 +627,15 @@ class JointParameter(Parameter, param_type="joint"):
 
     def _write_at_index(
         self,
-        ds: xr.Dataset,
+        ds: ParameterDataset,
         index: DimIndex,
         value: float | np.ndarray | list[np.ndarray],
     ):
         """ "Write a list of arrays into the dataset, one per base_param.
 
         Args:
-            ds (xr.Dataset): Working copy of the parameter dataset. Modified in place.
-            default_ds (xr.Dataset): Unchanging default dataset.
+            ds (ParameterDataset): Working copy of the parameter dataset. Modified in place.
+            default_ds (ParameterDataset): Unchanging default dataset.
             value (float | np.ndarray | list[np.ndarray]): One array per entry in
                 spec.base_params. Must have the same length as spec.base_params.
             fixed_indices (dict[str, list[int]] | None, optional): Indices to hold at
@@ -641,8 +652,8 @@ class JointParameter(Parameter, param_type="joint"):
 
     def _write_full(
         self,
-        ds: xr.Dataset,
-        default_ds: xr.Dataset,
+        ds: ParameterDataset,
+        default_ds: ParameterDataset,
         value: float | np.ndarray | list[np.ndarray],
         fixed_indices: dict[str, list[int]],
     ):
@@ -668,11 +679,6 @@ def _broadcast_to_array(
 
     Scalar value: broadcast to every non-fixed position.
     Array value: must match arr shape; fixed positions are skipped.
-
-    The return type is always ``np.ndarray`` (or ``float`` for genuine 0-D
-    inputs). Callers assigning back to ``ds[var].values`` should be aware that
-    xarray will accept either, but downstream code expecting an ndarray should
-    guard against the scalar case if ``arr.ndim == 0``.
 
     Args:
         arr (np.ndarray): default array from dataset

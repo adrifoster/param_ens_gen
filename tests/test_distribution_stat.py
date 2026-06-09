@@ -344,10 +344,10 @@ def test_pft_stat_from_sheet_sorts_by_pft_index():
     np.testing.assert_array_equal(stat.indices, [0, 1, 2])
 
 
-def test_pft_stat_resolve_returns_values(pft_sheet, default_ds):
+def test_pft_stat_resolve_returns_values(pft_sheet, param_dataset):
     """PFTStat.resolve() returns the stored values array."""
     stat = PFTStat.from_sheet(pft_sheet, "param_min")
-    default_value = default_ds["fates_leaf_slatop"].values
+    default_value = param_dataset["fates_leaf_slatop"].values
     result = stat.resolve(default_value)
     np.testing.assert_allclose(result, stat.values)
 
@@ -373,7 +373,7 @@ def test_pft_stat_resolve_none_default_raises(pft_sheet):
         stat.resolve(None)
 
 
-def test_pft_stat_resolve_partial_sheet_fills_from_default(default_ds):
+def test_pft_stat_resolve_partial_sheet_fills_from_default(param_dataset):
     """PFTStat.resolve() fills missing PFT indices from default_value."""
     partial_sheet = pd.DataFrame(
         {
@@ -384,7 +384,7 @@ def test_pft_stat_resolve_partial_sheet_fills_from_default(default_ds):
         }
     )
     stat = PFTStat.from_sheet(partial_sheet, "param_min")
-    default_value = default_ds["fates_leaf_slatop"].values  # [0.010, 0.020, 0.030]
+    default_value = param_dataset["fates_leaf_slatop"].values  # [0.010, 0.020, 0.030]
     result = stat.resolve(default_value)
     # index 0 (pft_index=1): sheet value
     # index 1 (pft_index=2): default

@@ -242,6 +242,27 @@ def test_from_row_precision_normalizes_leading_zero(default_row):
     assert spec.precision == ".2f"
 
 
+def test_from_row_group_name_parsed(default_row):
+    """from_row correctly parses a group_name string."""
+    default_row["group_name"] = "photosynthesis"
+    spec = ParamSpec.from_row(default_row)
+    assert spec.group_name == "photosynthesis"
+
+
+def test_from_row_group_name_none_when_missing(default_row):
+    """from_row sets group_name to None when the cell is missing."""
+    spec = ParamSpec.from_row(default_row)
+    assert spec.group_name is None
+
+
+@pytest.mark.parametrize("value", [None, float("nan"), ""])
+def test_from_row_group_name_none_for_blank(default_row, value):
+    """from_row sets group_name to None for blank/null values."""
+    default_row["group_name"] = value
+    spec = ParamSpec.from_row(default_row)
+    assert spec.group_name is None
+
+
 # ===========================================================================
 # ParamSpec.__post_init__: field-level invariants
 #

@@ -16,11 +16,13 @@ def test_sort_params_no_dependencies(default_param, scalar_param):
     ]
 
 
-def test_sort_params_root_before_dependent(default_ds, scale_from_root_row, root_row):
+def test_sort_params_root_before_dependent(
+    param_dataset, scale_from_root_row, root_row
+):
     """ScaleFromRootParameter is sorted after its root."""
 
-    root = DefaultParameter(root_row, default_ds)
-    dependent = ScaleFromRootParameter(scale_from_root_row, default_ds)
+    root = DefaultParameter(root_row, param_dataset)
+    dependent = ScaleFromRootParameter(scale_from_root_row, param_dataset)
 
     # pass dependent first to prove sorting does work
     result = sort_params([dependent, root])
@@ -35,12 +37,12 @@ def test_sort_params_root_not_in_list(scale_param):
     assert result[0].spec.name == scale_param.spec.name
 
 
-def test_sort_params_cycle_raises(default_ds, mutually_dependent_rows):
+def test_sort_params_cycle_raises(param_dataset, mutually_dependent_rows):
     """Cycle among ScaleFromRootParameters raises ValueError."""
 
     row_a, row_b = mutually_dependent_rows
-    param_a = ScaleFromRootParameter(row_a, default_ds)
-    param_b = ScaleFromRootParameter(row_b, default_ds)
+    param_a = ScaleFromRootParameter(row_a, param_dataset)
+    param_b = ScaleFromRootParameter(row_b, param_dataset)
 
     with pytest.raises(ValueError, match="Cycle detected"):
         sort_params([param_a, param_b])
