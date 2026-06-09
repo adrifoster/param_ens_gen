@@ -343,15 +343,15 @@ class PosteriorSampler(Sampler, sampler_type="posterior"):
         else:
             for source in self.sources:
                 sort_idx = source.sort_param_index
-                if isinstance(value, list):
-                    sort_value = float(value[sort_idx].flat[0])
-                else:
-                    sort_value = value
-                row = source.unscale(sort_value)
                 indices = (
                     range(n_indices) if source.is_broadcast else source.array_indices
                 )
                 for array_idx in indices:
+                    if isinstance(value, list):
+                        sort_value = float(value[sort_idx][array_idx])
+                    else:
+                        sort_value = float(value)
+                    row = source.unscale(sort_value)
                     for k, _ in enumerate(self.parameters):
                         result[k][array_idx] = row
         return result

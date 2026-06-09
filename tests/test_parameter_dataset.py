@@ -264,3 +264,52 @@ def test_json_scalar_dim_roundtrips(json_dataset, tmp_path):
         data = json.load(f)
     assert data["parameters"]["fates_canopy_closure_thresh"]["dims"] == ["scalar"]
     assert isinstance(data["parameters"]["fates_canopy_closure_thresh"]["data"], list)
+
+
+def test_json_empty_dims_raises(tmp_path):
+    """FATESJSONParameterVariable raises for empty dims list."""
+    data = {
+        "attributes": {},
+        "dimensions": {},
+        "parameters": {
+            "my_scalar": {
+                "dtype": "float",
+                "dims": [],
+                "long_name": "test",
+                "units": "1",
+                "data": 0.5,
+            }
+        },
+    }
+    path = tmp_path / "test.json"
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(data, f)
+    ds = FATESJSONParameterDataset.load(path)
+    with pytest.raises(ValueError, match="empty dims"):
+        ds["my_scalar"].values = np.float64(0.9)
+
+
+def test_json_save_empty_dims_raises(tmp_path):
+    """FATESJSONParameterDataset.save raises for empty dims list."""
+    data = {
+        "attributes": {},
+        "dimensions": {},
+        "parameters": {
+            "my_scalar": {
+                "dtype": "float",
+                "dims": [],
+                "long_name": "test",
+                "units": "1",
+                "data": 0.5,
+            }
+        },
+    }
+    path = tmp_path / "test.json"
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(data, f)
+
+    ds = FATESJSONParameterDataset.load(path)
+    # access the variable to put it in the cache
+    _ = ds["my_scalar"]
+    with pytest.raises(ValueError, match="empty dims"):
+        ds.save(path)

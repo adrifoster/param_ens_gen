@@ -538,3 +538,48 @@ def test_unscale_broadcast_multiple_sources(tmp_path):
     assert len(result) == 1  # one entry per parameter
     assert len(result[0]) == 3  # one value per index
     assert all(0.0 <= v <= 1.0 for v in result[0])
+
+
+def test_posterior_sampler_normalize_broadcast_joint(joint_param_row, posterior_config):
+    """normalize() with a list of arrays uses sort_param_index correctly."""
+    sampler = PosteriorSampler(joint_param_row, posterior_config=posterior_config)
+    default_values = [
+        np.array([0.012, 0.015, 0.005]),  # coeff1 defaults
+        np.array([2.1, 2.5, 2.6]),  # coeff2 defaults
+    ]
+    ctx = SampleContext(array_index=None, n_indices=3)
+    result = sampler.normalize(default_values, ctx)
+    assert isinstance(result, list)
+    assert len(result) == 2
+    assert all(isinstance(r, np.ndarray) for r in result)
+    assert all(len(r) == 3 for r in result)
+    assert all(np.all(r >= 0.0) and np.all(r <= 1.0) for r in result)
+
+
+def test_posterior_sampler_normalize_broadcast_joint_multi_source(
+    joint_param_row, posterior_file, posterior_file_2
+):
+    """normalize() with list of arrays works for multi-source case."""
+    config = {
+        "parameters": [
+            "fates_leafn_vert_scaler_coeff1",
+            "fates_leafn_vert_scaler_coeff2",
+        ],
+        "files": [
+            {"path": str(posterior_file), "array_indices": [0, 1]},
+            {"path": str(posterior_file_2), "array_indices": [2]},
+        ],
+    }
+    sampler = PosteriorSampler(joint_param_row, posterior_config=config)
+    default_values = [
+        np.array(
+            [0.012, 0.015, 1.5]
+        ),  # coeff1: indices 0,1 from file1 [0,0.95], index 2 from file2 [1.0,1.95]
+        np.array(
+            [12.0, 14.0, 22.0]
+        ),  # coeff2: indices 0,1 from file1 [10,19.5], index 2 from file2 [20,29.5]
+    ]
+    ctx = SampleContext(array_index=None, n_indices=3)
+    result = sampler.normalize(default_values, ctx)
+    assert len(result) == 2
+    assert all(np.all(r >= 0.0) and np.all(r <= 1.0) for r in result)

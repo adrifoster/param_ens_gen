@@ -14,6 +14,7 @@ dependencies = [
 "pyyaml",
 "tqdm",
 "netcdf4",
+"matplotlib",
 ]
  
 [project.optional-dependencies]
@@ -37,6 +38,9 @@ source-roots = ["."]
 
 [tool.pylint."tests/conftest.py"]
 disable = ["redefined-outer-name"]
+
+[tool.pylint."tests/test_diagnostics.py"]
+disable = ["wrong-import-order", "wrong-import-position"]
 
 [tool.pylint."tests/*.py"]
 disable = ["too-many-arguments", "too-many-positional-arguments", "duplicate-code"]

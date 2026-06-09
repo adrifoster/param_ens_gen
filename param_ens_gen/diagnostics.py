@@ -16,24 +16,51 @@ from .parameter import Parameter
 from .parameter_dataset import ParameterDataset
 from .utils import read_param_list
 
+try:
+    import matplotlib.pyplot as plt
+    import matplotlib.patches as mpatches
+
+    HAS_MATPLOTLIB = True
+except ImportError:  # pragma: no cover
+    HAS_MATPLOTLIB = False
+
+_CATEGORY_COLORS = {
+    "allometry": "#1D9E75",
+    "allocation": "#7F77DD",
+    "photosynthesis": "#D85A30",
+    "vegetation water": "#378ADD",
+    "phenology": "#EF9F27",
+    "mortality": "#D4537E",
+    "decomposition": "#639922",
+    "respiration": "#BA7517",
+    "radiation": "#0F6E56",
+    "recruitment": "#993556",
+    "turbulence": "#85B7EB",
+    "vegetation dynamics": "#F0997B",
+    "stomatal": "#C97DB0",
+    "biogeochemistry": "#7DBB9E",
+}
+_DEFAULT_COLOR = "#2C2C2A"
+
 
 def _expand_normalized(
     param: Parameter, normalized: float | np.ndarray | list
-) -> list[tuple[str, float]]:
-    """Expand a normalized value into (name, value) pairs, one per index."""
+) -> list[tuple[str, float, str]]:
+    """Expand a normalized value into (name, value, category) tuples."""
     param_names = (
         param.spec.base_params if param.spec.base_params else [param.spec.name]
     )
     normalized_list = normalized if isinstance(normalized, list) else [normalized]
+    category = param.spec.category
 
     rows = []
     for pname, norm_val in zip(param_names, normalized_list):
         arr = np.asarray(norm_val)
         if arr.ndim == 0:
-            rows.append((pname, float(arr)))
+            rows.append((pname, float(arr), category))
         else:
             for i, v in enumerate(arr.flat):
-                rows.append((f"{pname}_{i}", float(v)))
+                rows.append((f"{pname}_{i}", float(v), category))
     return rows
 
 
@@ -113,4 +140,132 @@ def normalize_defaults(
         default_value = param.get_default(default_ds)
         normalized = param.normalize(default_value, default_ds)
         rows.extend(_expand_normalized(param, normalized))
-    return pd.DataFrame(rows, columns=["parameter", "normalized_value"])
+    return pd.DataFrame(rows, columns=["parameter", "normalized_value", "category"])
+
+
+def _build_legend(present_cats: list[str], category_colors: dict, default_color: str):
+    """Build legend elements for plot_param_bounds."""
+    elements = [
+        mpatches.Patch(
+            facecolor=category_colors.get(cat, "#888780"), label=cat, alpha=0.8
+        )
+        for cat in sorted(present_cats)
+    ]
+    elements.append(
+        plt.Line2D(
+            [0],
+            [0],
+            marker="o",
+            color="w",
+            markerfacecolor=default_color,
+            markersize=5,
+            label="Default value",
+        )
+    )
+    return elements
+
+
+def _draw_param_row(ax, y: int, x_def: float, color: str, default_color: str):
+    """Draw a single parameter row on the axes."""
+    ax.plot(
+        [0.0, 1.0],
+        [y, y],
+        color=color,
+        linewidth=3.5,
+        solid_capstyle="round",
+        alpha=0.75,
+        zorder=2,
+    )
+    ax.plot(
+        [0.0, 1.0],
+        [y, y],
+        marker="|",
+        color=color,
+        markersize=7,
+        markeredgewidth=1.5,
+        linewidth=0,
+        zorder=3,
+    )
+    ax.plot(
+        x_def, y, "o", color=default_color, markersize=4.5, zorder=4, markeredgewidth=0
+    )
+
+
+def plot_param_bounds(df: pd.DataFrame):
+    """Plot normalized parameter ranges with default values marked.
+
+    Each parameter is shown as a horizontal bar spanning [0, 1] with a dot
+    marking where the default value sits. Parameters are grouped by category
+    and color-coded accordingly.
+
+    Args:
+        df (pd.DataFrame): Output of normalize_defaults(), with columns
+            'parameter', 'normalized_value', and 'category'.
+
+    Returns:
+        matplotlib.figure.Figure: The figure object.
+    """
+    if not HAS_MATPLOTLIB:
+        raise ImportError(
+            "matplotlib is required for plotting. "
+            "Install it with: conda install matplotlib"
+        )  # pragma: no cover
+
+    n_params = len(df)
+    fig_height = max(6, n_params * 0.32 + 2)
+    fig, ax = plt.subplots(figsize=(9, fig_height))
+
+    yticks, ylabels = [], []
+    prev_cat = None
+    y = 0
+
+    for _, row in df.iterrows():
+        color = _CATEGORY_COLORS.get(row.get("category", ""), "#888780")
+        x_def = float(np.clip(row["normalized_value"], 0.0, 1.0))
+
+        if y % 2 == 0:
+            ax.axhspan(y - 0.4, y + 0.4, color="#f7f7f5", zorder=0, linewidth=0)
+
+        if row.get("category") != prev_cat and prev_cat is not None:
+            ax.axhline(
+                y - 0.5, color="#cccccc", linewidth=0.8, linestyle="--", zorder=1
+            )
+        prev_cat = row.get("category")
+
+        _draw_param_row(ax, y, x_def, color, _DEFAULT_COLOR)
+
+        yticks.append(y)
+        ylabels.append(row["parameter"])
+        y += 1
+
+        ax.set_yticks(yticks)
+        ax.set_yticklabels(ylabels, fontsize=7.5, fontfamily="monospace")
+        ax.invert_yaxis()
+        ax.set_xlim(-0.05, 1.05)
+        ax.set_xticks([0, 0.25, 0.5, 0.75, 1.0])
+        ax.set_xticklabels(["min", "25%", "50%", "75%", "max"], fontsize=8)
+        ax.set_xlabel("Normalized prior range  [min to max]", fontsize=9)
+        ax.axvline(0.5, color="#cccccc", linewidth=0.8, linestyle=":", zorder=0)
+        ax.set_ylim(n_params - 0.5, -0.5)
+        ax.spines[["top", "right", "left"]].set_visible(False)
+        ax.tick_params(left=False)
+        ax.grid(axis="x", color="#e0e0e0", linewidth=0.6, zorder=0)
+
+        present_cats = df["category"].unique() if "category" in df.columns else []
+
+        ax.legend(
+            handles=_build_legend(present_cats, _CATEGORY_COLORS, _DEFAULT_COLOR),
+            fontsize=7.5,
+            framealpha=0.9,
+            edgecolor="#cccccc",
+            bbox_to_anchor=[1.1, 0.5],
+            loc="center",
+        )
+        ax.set_title(
+            "Prior parameter ranges by functional group",
+            fontsize=11,
+            fontweight="500",
+            pad=12,
+        )
+
+    return fig

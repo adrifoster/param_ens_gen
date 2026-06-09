@@ -278,7 +278,10 @@ class FATESJSONParameterVariable(ParameterVariable):
         elif dims:
             self._entry["data"] = self._values.tolist()
         else:
-            self._entry["data"] = float(self._values)
+            raise ValueError(
+                "Unexpected empty dims for FATES JSON parameter. "
+                "Scalar parameters should use dims=['scalar'] in FATES JSON format."
+            )
 
     @property
     def dims(self) -> list[str]:
@@ -366,7 +369,10 @@ class FATESJSONParameterDataset(ParameterDataset):
             elif var.values.ndim > 0:
                 self._params[name]["data"] = var.values.tolist()
             else:
-                self._params[name]["data"] = float(var.values)
+                raise ValueError(
+                    f"Parameter '{name}' has unexpected empty dims in FATES JSON format. "
+                    "Scalar parameters should use dims=['scalar']."
+                )
         with open(path, "w", encoding="utf-8") as f:
             json.dump(self._data, f, indent=2)
 

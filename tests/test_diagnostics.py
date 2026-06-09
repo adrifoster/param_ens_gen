@@ -6,7 +6,38 @@ import numpy as np
 import pytest
 import pandas as pd
 
-from param_ens_gen.diagnostics import normalize_defaults
+matplotlib = pytest.importorskip("matplotlib")
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+from param_ens_gen.diagnostics import normalize_defaults, plot_param_bounds
+
+
+def test_plot_param_bounds_returns_figure(ensemble_param_dir, default_param_file):
+    """plot_param_bounds returns a matplotlib Figure."""
+    df = normalize_defaults(
+        ensemble_param_dir,
+        default_param_file,
+        param_list=["fates_leaf_slatop", "fates_canopy_closure_thresh"],
+    )
+    fig = plot_param_bounds(df)
+    assert fig is not None
+    plt.close(fig)
+
+
+def test_plot_param_bounds_category_divider_drawn(
+    ensemble_param_dir, default_param_file
+):
+    """plot_param_bounds draws a divider line between categories."""
+    df = normalize_defaults(
+        ensemble_param_dir,
+        default_param_file,
+        param_list=["fates_canopy_closure_thresh", "fates_leaf_slatop"],
+    )
+    # put biogeochemistry first so stomatal comes after — triggers category change
+    df = df.sort_values("category").reset_index(drop=True)
+    fig = plot_param_bounds(df)
+    assert fig is not None
+    plt.close(fig)
 
 
 def test_normalize_defaults_returns_dataframe(
