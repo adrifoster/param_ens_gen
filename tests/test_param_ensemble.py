@@ -198,7 +198,7 @@ def test_param_list_unknown_parameter_raises(
         LatinHypercubeEnsemble(config)
 
 
-def test_missing_default_param_file_raises(
+def test_missing_netcdf_default_param_file_raises(
     ensemble_param_dir, tmp_path, posterior_config_file
 ):
     """Test that from_dict raises if it can't find the default parameter file"""
@@ -211,8 +211,7 @@ def test_missing_default_param_file_raises(
     )
     with pytest.raises(FileNotFoundError, match="does not exist"):
         LatinHypercubeEnsemble(config)
-
-
+        
 def test_missing_posterior_sources_file_raises(
     ensemble_param_dir, tmp_path, default_param_file
 ):
@@ -228,22 +227,9 @@ def test_missing_posterior_sources_file_raises(
         LatinHypercubeEnsemble(config)
 
 
-def test_from_dict_params_correct(
-    ensemble_param_dir, default_param_file, tmp_path, posterior_config_file
-):
-    """Test that from_dict correctly reads in a list of parameters"""
-    ensemble = ParamEnsemble.from_dict(
-        {
-            "ensemble_type": "LatinHypercube",
-            "param_dir": str(ensemble_param_dir),
-            "ensemble_dir": str(tmp_path / "ensemble"),
-            "file_prefix": "test",
-            "default_param_file": str(default_param_file),
-            "ensemble_members": 5,
-            "posterior_sources": posterior_config_file,
-        }
-    )
-    assert len(ensemble.params) == 6
+def test_from_dict_params_correct(lh_ensemble):
+    """Test that the ensemble correctly sets the list of parameters"""
+    assert len(lh_ensemble.params) == 6
 
 
 def test_from_dict_param_list_subsets_correctly(
@@ -562,7 +548,8 @@ def test_oat_create_ensemble_key_bad_direction_raises(oat_ensemble):
 def test_create_ensemble_writes_files(lh_ensemble):
     """Test that create_ensemble writes all the files we require"""
     lh_ensemble.create_ensemble()
-    output_files = list(lh_ensemble.ensemble_dir.glob("test_*.nc"))
+    ext = lh_ensemble.default_ds.file_extension
+    output_files = list(lh_ensemble.ensemble_dir.glob(f"test_*{ext}"))
     assert len(output_files) == 5
     key_file = lh_ensemble.ensemble_dir / "test_key.csv"
     assert key_file.exists()

@@ -244,7 +244,7 @@ class ParamEnsemble(ABC):
         samples = self.create_samples()
         for i, sample in tqdm(enumerate(samples), total=len(samples), unit="member"):
             ds = self.create_ensemble_member(sample)
-            file_name = f"{self.file_prefix}_{_generate_suffix(i)}.nc"
+            file_name = f"{self.file_prefix}_{_generate_suffix(i)}{self.default_ds.file_extension}"
             ds.save(self.ensemble_dir / file_name)
             ds.close()
 

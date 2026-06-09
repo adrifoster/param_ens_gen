@@ -20,9 +20,9 @@ from param_ens_gen.parameter_dataset import (
 # ParameterDataset.from_path
 # ===========================================================================
 
-def test_from_path_loads_netcdf(default_param_file):
+def test_from_path_loads_netcdf(default_netcdf_file):
     """from_path returns a NetCDFParameterDataset for .nc files."""
-    ds = ParameterDataset.from_path(default_param_file)
+    ds = ParameterDataset.from_path(default_netcdf_file)
     assert isinstance(ds, NetCDFParameterDataset)
 
 

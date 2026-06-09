@@ -33,7 +33,7 @@ class ParameterVariable(ABC):
     @abstractmethod
     def values(self) -> np.ndarray:
         """Return the raw numpy array for this variable."""
-
+        
     @values.setter
     @abstractmethod
     def values(self, arr: np.ndarray) -> None:
@@ -67,6 +67,11 @@ class ParameterDataset(ABC):
     Wraps either a NetCDF or JSON parameter file and exposes a common
     set of operations used throughout param_ens_gen.
     """
+    
+    @property
+    @abstractmethod
+    def file_extension(self) -> np.ndarray:
+        """Return the correct file extension"""
 
     @property
     @abstractmethod
@@ -182,6 +187,10 @@ class NetCDFParameterDataset(ParameterDataset):
 
     def __init__(self, ds: xr.Dataset) -> None:
         self._ds = ds
+        
+    @property
+    def file_extension(self) -> str:
+        return ".nc"
 
     @property
     def sizes(self) -> dict[str, int]:
@@ -259,11 +268,11 @@ class FATESJSONParameterVariable(ParameterVariable):
 
     @values.setter
     def values(self, arr: np.ndarray) -> None:
-        self._values = arr
+        self._values = np.asarray(arr)
         # write back to the entry so save() picks it up
         dims = self._entry.get("dims", [])
         if dims:
-            self._entry["data"] = arr.tolist()
+            self._entry["data"] = self._values.tolist()
         else:
             # scalar: store as a plain Python float
             self._entry["data"] = float(arr)
@@ -307,6 +316,10 @@ class FATESJSONParameterDataset(ParameterDataset):
         # cache of ParameterVariable objects keyed by name
         self._cache: dict[str, FATESJSONParameterVariable] = {}
 
+    @property
+    def file_extension(self) -> str:
+        return ".json"
+        
     @property
     def sizes(self) -> dict[str, int]:
         return dict(self._dim_sizes)

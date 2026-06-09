@@ -82,7 +82,7 @@ def test_uniform_sampler_mixed_pft_raises(default_row):
         UniformSampler(row)
 
 
-def test_resolve_bounds_pft_axis_1(default_ds):
+def test_resolve_bounds_pft_axis_1(param_dataset):
     """resolve_bounds() correctly resolves PFT bounds along axis 1 for 2D parameters."""
     row = pd.Series(
         {
@@ -101,7 +101,7 @@ def test_resolve_bounds_pft_axis_1(default_ds):
         }
     )
     sampler = UniformSampler(row, pft_sheet=pft_sheet)
-    default_value = default_ds["fates_leaf_vcmax25top"].values  # shape (2, 3)
+    default_value = param_dataset["fates_leaf_vcmax25top"].values  # shape (2, 3)
     min_val, max_val = sampler.resolve_bounds(default_value, pft_axis=1)
     assert min_val.shape == (2, 3)
     assert max_val.shape == (2, 3)
@@ -134,10 +134,10 @@ def test_resolve_bounds_percent(percent_row):
     np.testing.assert_allclose(max_val, [1.5, 3.0, 6.0])
 
 
-def test_resolve_bounds_pft(pft_uniform_row, pft_sheet, default_ds):
+def test_resolve_bounds_pft(pft_uniform_row, pft_sheet, param_dataset):
     """resolve_bounds() returns per-PFT arrays for PFT-specific bounds."""
     sampler = UniformSampler(pft_uniform_row, pft_sheet=pft_sheet)
-    default_value = default_ds["fates_leaf_slatop"].values
+    default_value = param_dataset["fates_leaf_slatop"].values
     min_val, max_val = sampler.resolve_bounds(default_value, pft_axis=0)
     np.testing.assert_allclose(min_val, [0.005, 0.004, 0.008])
     np.testing.assert_allclose(max_val, [0.040, 0.035, 0.060])
@@ -174,7 +174,7 @@ def test_resolve_bounds_min_greater_than_max_raises():
         sampler.resolve_bounds(None)
 
 
-def test_resolve_bounds_array_any_violation_raises(default_ds):
+def test_resolve_bounds_array_any_violation_raises(param_dataset):
     """resolve_bounds() raises ValueError if any element has min > max."""
     row = pd.Series(
         {
@@ -192,7 +192,7 @@ def test_resolve_bounds_array_any_violation_raises(default_ds):
             "param_max": [0.9, 0.5, 0.8],
         }
     )
-    default_value = default_ds["fates_leaf_slatop"].values
+    default_value = param_dataset["fates_leaf_slatop"].values
     sampler = UniformSampler(row, pft_sheet=pft_sheet)
     with pytest.raises(ValueError, match="min > max"):
         sampler.resolve_bounds(default_value, pft_axis=0)
@@ -243,26 +243,26 @@ def test_sample_monotonic_with_increasing_input(default_row):
     assert all(values[i] <= values[i + 1] for i in range(len(values) - 1))
 
 
-def test_sample_at_zero_pft_returns_min(pft_uniform_row, pft_sheet, default_ds):
+def test_sample_at_zero_pft_returns_min(pft_uniform_row, pft_sheet, param_dataset):
     """sample(0.0) returns minimum bounds for PFT-specific bounds."""
     sampler = UniformSampler(pft_uniform_row, pft_sheet=pft_sheet)
-    default_value = default_ds["fates_leaf_slatop"].values
+    default_value = param_dataset["fates_leaf_slatop"].values
     result = sampler.sample(0.0, SampleContext(default_value=default_value, pft_axis=0))
     np.testing.assert_allclose(result, [0.005, 0.004, 0.008])
 
 
-def test_sample_at_one_pft_returns_max(pft_uniform_row, pft_sheet, default_ds):
+def test_sample_at_one_pft_returns_max(pft_uniform_row, pft_sheet, param_dataset):
     """sample(1.0) returns maximum bounds for PFT-specific bounds."""
     sampler = UniformSampler(pft_uniform_row, pft_sheet=pft_sheet)
-    default_value = default_ds["fates_leaf_slatop"].values
+    default_value = param_dataset["fates_leaf_slatop"].values
     result = sampler.sample(1.0, SampleContext(default_value=default_value, pft_axis=0))
     np.testing.assert_allclose(result, [0.040, 0.035, 0.060])
 
 
-def test_sample_at_half_pft_returns_midpoint(pft_uniform_row, pft_sheet, default_ds):
+def test_sample_at_half_pft_returns_midpoint(pft_uniform_row, pft_sheet, param_dataset):
     """sample(0.5) returns the midpoint of min and max for PFT-specific bounds."""
     sampler = UniformSampler(pft_uniform_row, pft_sheet=pft_sheet)
-    default_value = default_ds["fates_leaf_slatop"].values
+    default_value = param_dataset["fates_leaf_slatop"].values
     result = sampler.sample(0.5, SampleContext(default_value=default_value, pft_axis=0))
     np.testing.assert_allclose(result, [0.0225, 0.0195, 0.034])
 
@@ -338,20 +338,20 @@ def test_normalize_at_max_returns_one(default_row):
     assert sampler.normalize(0.05, SampleContext()) == pytest.approx(1.0)
 
 
-def test_normalize_at_min_pft_returns_zero(pft_uniform_row, pft_sheet, default_ds):
+def test_normalize_at_min_pft_returns_zero(pft_uniform_row, pft_sheet, param_dataset):
     """normalize() returns 0.0 for minimum bounds for PFT-specific bounds."""
     sampler = UniformSampler(pft_uniform_row, pft_sheet=pft_sheet)
-    default_value = default_ds["fates_leaf_slatop"].values
+    default_value = param_dataset["fates_leaf_slatop"].values
     result = sampler.normalize(
         [0.005, 0.004, 0.008], SampleContext(default_value=default_value, pft_axis=0)
     )
     np.testing.assert_allclose(result, [0.0, 0.0, 0.0])
 
 
-def test_normalize_at_max_pft_returns_zero(pft_uniform_row, pft_sheet, default_ds):
+def test_normalize_at_max_pft_returns_zero(pft_uniform_row, pft_sheet, param_dataset):
     """normalize() returns 1.0 for maximum bounds for PFT-specific bounds."""
     sampler = UniformSampler(pft_uniform_row, pft_sheet=pft_sheet)
-    default_value = default_ds["fates_leaf_slatop"].values
+    default_value = param_dataset["fates_leaf_slatop"].values
     result = sampler.normalize(
         [0.040, 0.035, 0.060], SampleContext(default_value=default_value, pft_axis=0)
     )
