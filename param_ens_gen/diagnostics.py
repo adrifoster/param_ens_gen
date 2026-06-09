@@ -238,34 +238,33 @@ def plot_param_bounds(df: pd.DataFrame):
         ylabels.append(row["parameter"])
         y += 1
 
-        ax.set_yticks(yticks)
-        ax.set_yticklabels(ylabels, fontsize=7.5, fontfamily="monospace")
-        ax.invert_yaxis()
-        ax.set_xlim(-0.05, 1.05)
-        ax.set_xticks([0, 0.25, 0.5, 0.75, 1.0])
-        ax.set_xticklabels(["min", "25%", "50%", "75%", "max"], fontsize=8)
-        ax.set_xlabel("Normalized prior range  [min to max]", fontsize=9)
-        ax.axvline(0.5, color="#cccccc", linewidth=0.8, linestyle=":", zorder=0)
-        ax.set_ylim(n_params - 0.5, -0.5)
-        ax.spines[["top", "right", "left"]].set_visible(False)
-        ax.tick_params(left=False)
-        ax.grid(axis="x", color="#e0e0e0", linewidth=0.6, zorder=0)
+    ax.set_yticks(yticks)
+    ax.set_yticklabels(ylabels, fontsize=7.5, fontfamily="monospace")
+    ax.invert_yaxis()
+    ax.set_xlim(-0.05, 1.05)
+    ax.set_xticks([0, 0.25, 0.5, 0.75, 1.0])
+    ax.set_xticklabels(["min", "25%", "50%", "75%", "max"], fontsize=8)
+    ax.set_xlabel("Normalized prior range  [min to max]", fontsize=9)
+    ax.axvline(0.5, color="#cccccc", linewidth=0.8, linestyle=":", zorder=0)
+    ax.set_ylim(n_params - 0.5, -0.5)
+    ax.spines[["top", "right", "left"]].set_visible(False)
+    ax.tick_params(left=False)
+    ax.grid(axis="x", color="#e0e0e0", linewidth=0.6, zorder=0)
 
-        present_cats = df["category"].unique() if "category" in df.columns else []
+    present_cats = df["category"].unique() if "category" in df.columns else []
 
-        ax.legend(
-            handles=_build_legend(present_cats, _CATEGORY_COLORS, _DEFAULT_COLOR),
-            fontsize=7.5,
-            framealpha=0.9,
-            edgecolor="#cccccc",
-            bbox_to_anchor=[1.1, 0.5],
-            loc="center",
-        )
-        ax.set_title(
-            "Prior parameter ranges by functional group",
-            fontsize=11,
-            fontweight="500",
-            pad=12,
-        )
-
+    ax.legend(
+        handles=_build_legend(present_cats, _CATEGORY_COLORS, _DEFAULT_COLOR),
+        fontsize=7.5,
+        framealpha=0.9,
+        edgecolor="#cccccc",
+        bbox_to_anchor=[1.1, 0.5],
+        loc="center",
+    )
+    ax.set_title(
+        "Prior parameter ranges by functional group",
+        fontsize=11,
+        fontweight="500",
+        pad=12,
+    )
     return fig
