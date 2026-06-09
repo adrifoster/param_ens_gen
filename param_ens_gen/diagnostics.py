@@ -17,6 +17,26 @@ from .parameter_dataset import ParameterDataset
 from .utils import read_param_list
 
 
+def _expand_normalized(
+    param: Parameter, normalized: float | np.ndarray | list
+) -> list[tuple[str, float]]:
+    """Expand a normalized value into (name, value) pairs, one per index."""
+    param_names = (
+        param.spec.base_params if param.spec.base_params else [param.spec.name]
+    )
+    normalized_list = normalized if isinstance(normalized, list) else [normalized]
+
+    rows = []
+    for pname, norm_val in zip(param_names, normalized_list):
+        arr = np.asarray(norm_val)
+        if arr.ndim == 0:
+            rows.append((pname, float(arr)))
+        else:
+            for i, v in enumerate(arr.flat):
+                rows.append((f"{pname}_{i}", float(v)))
+    return rows
+
+
 def normalize_defaults(
     param_dir: Path,
     default_param_file: Path,
@@ -88,28 +108,9 @@ def normalize_defaults(
         for _, row in main.iterrows()
     ]
 
-    names = []
-    normalized_values = []
-
+    rows = []
     for param in params:
         default_value = param.get_default(default_ds)
         normalized = param.normalize(default_value, default_ds)
-        param_names = param.spec.base_params if param.spec.base_params else [param.spec.name]
-        normalized_list = normalized if isinstance(normalized, list) else [normalized]
-
-        for pname, norm_val in zip(param_names, normalized_list):
-            arr = np.asarray(norm_val)
-            if arr.ndim == 0:
-                names.append(pname)
-                normalized_values.append(float(arr))
-            else:
-                for i, v in enumerate(arr.flat):
-                    names.append(f"{pname}_{i}")
-                    normalized_values.append(float(v))
-
-    return pd.DataFrame(
-        {
-            "parameter": names,
-            "normalized_value": normalized_values,
-        }
-    )
+        rows.extend(_expand_normalized(param, normalized))
+    return pd.DataFrame(rows, columns=["parameter", "normalized_value"])

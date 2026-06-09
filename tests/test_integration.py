@@ -249,7 +249,6 @@ def test_grouped_params_move_together(grouped_param_dir, default_param_file, tmp
     samples = ensemble.create_samples()
 
     for sample in samples:
-        photo_sample = next(ps for ps in sample if ps.group.name == "photosynthesis")
         # build member and verify both params were written
         ds = ensemble.create_ensemble_member(sample)
         assert "fates_leaf_slatop" in ds

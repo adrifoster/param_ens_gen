@@ -13,7 +13,9 @@ def test_normalize_defaults_returns_dataframe(
     ensemble_param_dir, default_param_file, posterior_config_file
 ):
     """normalize_defaults returns a DataFrame with correct columns."""
-    df = normalize_defaults(ensemble_param_dir, default_param_file, posterior_config_file)
+    df = normalize_defaults(
+        ensemble_param_dir, default_param_file, posterior_config_file
+    )
     assert isinstance(df, pd.DataFrame)
     assert "parameter" in df.columns
     assert "normalized_value" in df.columns
@@ -29,9 +31,7 @@ def test_normalize_defaults_has_row_per_parameter_index(
     assert len(df) == 19
 
 
-def test_normalize_defaults_param_list_subsets(
-    ensemble_param_dir, default_param_file
-):
+def test_normalize_defaults_param_list_subsets(ensemble_param_dir, default_param_file):
     """normalize_defaults respects param_list."""
     df = normalize_defaults(
         ensemble_param_dir,
@@ -72,12 +72,11 @@ def test_normalize_defaults_json(
     ensemble_param_dir, json_param_file, posterior_config_file
 ):
     """normalize_defaults works with JSON parameter files."""
-    df = normalize_defaults(
-        ensemble_param_dir, json_param_file, posterior_config_file
-    )
+    df = normalize_defaults(ensemble_param_dir, json_param_file, posterior_config_file)
     assert isinstance(df, pd.DataFrame)
     assert len(df) == 19
-    
+
+
 def test_normalize_defaults_scalar_param_has_one_row(
     ensemble_param_dir, default_param_file
 ):

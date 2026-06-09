@@ -589,7 +589,8 @@ def test_default_parameter_normalize_bounds(default_param, param_dataset):
     """normalize() at 0.005 and 0.05 returns 0.0 and 1.0."""
     assert default_param.normalize(0.005, param_dataset) == pytest.approx(0.0)
     assert default_param.normalize(0.05, param_dataset) == pytest.approx(1.0)
-    
+
+
 def test_scalar_parameter_normalize(scalar_param, param_dataset):
     """normalize() returns a value with the expected value."""
     result = scalar_param.normalize(0.8, param_dataset)
@@ -621,7 +622,7 @@ def test_joint_parameter_normalize(joint_param, param_dataset):
     assert len(result) == 2
     assert result[0].shape == (3,)
     assert result[1].shape == (3,)
-    
+
     # normalized values should be in [0, 1]
     assert np.all(result[0] >= 0.0) and np.all(result[0] <= 1.0)
     assert np.all(result[1] >= 0.0) and np.all(result[1] <= 1.0)

@@ -1,6 +1,7 @@
 """Tests for ParameterDataset and ParameterVariable implementations."""
 
 from __future__ import annotations
+import json
 
 import numpy as np
 import pytest
@@ -259,9 +260,7 @@ def test_json_scalar_dim_roundtrips(json_dataset, tmp_path):
     reloaded = FATESJSONParameterDataset.load(path)
     assert float(reloaded["fates_canopy_closure_thresh"].values) == pytest.approx(0.9)
     # verify the format is preserved as ['scalar'] not []
-    import json
-
-    with open(path) as f:
+    with open(path, encoding="utf-8") as f:
         data = json.load(f)
     assert data["parameters"]["fates_canopy_closure_thresh"]["dims"] == ["scalar"]
     assert isinstance(data["parameters"]["fates_canopy_closure_thresh"]["data"], list)

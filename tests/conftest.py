@@ -750,7 +750,7 @@ def posterior_config_file(tmp_path, posterior_file) -> Path:
         }
     }
     path = tmp_path / "posterior_sources.yaml"
-    with open(path, "w", encoding="utf8") as f:
+    with open(path, "w", encoding="utf-8") as f:
         yaml.dump(config, f)
     return path
 
