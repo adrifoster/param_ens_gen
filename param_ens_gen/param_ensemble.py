@@ -249,7 +249,7 @@ class ParamEnsemble(ABC):
             ds.close()
 
         ensemble_key = self.create_ensemble_key(samples)
-        ensemble_key.to_csv(self.ensemble_dir / f"{self.file_prefix}_key.csv")
+        ensemble_key.to_csv(self.ensemble_dir / f"{self.file_prefix}_key.csv", index=False)
 
         _write_ensemble_list(
             self.ensemble_dir,
