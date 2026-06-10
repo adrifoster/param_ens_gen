@@ -238,6 +238,7 @@ class Parameter(ABC):
         self,
         value: float | np.ndarray,
         default_ds: ParameterDataset,
+        clip_to_bounds: bool = False,
     ) -> float | np.ndarray:
         """Normalize a parameter to 0-1 given an input value
 
@@ -251,13 +252,15 @@ class Parameter(ABC):
             default_ds (ParameterDataset): default parameter dataset. used for validating
                 dimensions and indices
             fixed_indices (dict[str, list[int]]): 0-based indices to hold at default.
+            clip_to_bounds (bool, optional): optionally clip to 0-1 if value is outside
+            min/max range. Defaults to False.
 
         Returns:
             float: normalized [0-1] parameter value.
         """
         default_value = self.get_default(default_ds)
         context = self._build_context(default_value)
-        return self.sampler.normalize(value, context)
+        return self.sampler.normalize(value, context, clip_to_bounds=clip_to_bounds)
 
     def _build_context(
         self,

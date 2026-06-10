@@ -304,14 +304,14 @@ def test_sample_half_array_returns_array(percent_row):
 
 
 def test_normalize_below_min_raises(default_row):
-    """normalize() raises ValueErrro for below minimum bound."""
+    """normalize() raises ValueErrro for below minimum bound without clip_to_bounds."""
     sampler = UniformSampler(default_row)
     with pytest.raises(ValueError, match="minimum"):
         sampler.normalize(0.0, SampleContext())
 
 
 def test_normalize_above_max_raises(default_row):
-    """normalize() raises ValueErrro for above maximum bound."""
+    """normalize() raises ValueErrro for above maximum bound without clip_to_bounds."""
     sampler = UniformSampler(default_row)
     with pytest.raises(ValueError, match="maximum"):
         sampler.normalize(1.0, SampleContext())
@@ -383,6 +383,20 @@ def test_normalize_at_midpoint_percent_returns_half(percent_row):
     ) == pytest.approx(0.5)
 
 
+def test_normalize_clips_below_min(default_row):
+    """normalize() with clip_to_bounds=True clips values below min to 0.0."""
+    sampler = UniformSampler(default_row)
+    result = sampler.normalize(0.0, SampleContext(), clip_to_bounds=True)
+    assert result == pytest.approx(0.0)
+    
+    
+def test_normalize_clips_above_max(default_row):
+    """normalize() with clip_to_bounds=True clips values above max to 1.0."""
+    sampler = UniformSampler(default_row)
+    result = sampler.normalize(0.1, SampleContext(), clip_to_bounds=True)
+    assert result == pytest.approx(1.0)
+    
+    
 # ===========================================================================
 # PosteriorSampler.__init__
 # ===========================================================================
@@ -452,7 +466,7 @@ def test_posterior_sampler_multi_source_fills_correct_indices(
 
 
 # ===========================================================================
-# PosteriorSampler.sample: per-index draw
+# PosteriorSampler.sample
 # ===========================================================================
 
 
@@ -479,6 +493,11 @@ def test_posterior_sampler_no_index_match_raises(joint_param_row, posterior_file
     sampler = PosteriorSampler(joint_param_row, posterior_config=config)
     with pytest.raises(ValueError, match="No source found"):
         sampler.sample(0.5, SampleContext(array_index=99))
+
+# ===========================================================================
+# PosteriorSampler.normalize
+# ===========================================================================
+
 
 
 def test_posterior_sampler_normalize_for_index(tmp_path):

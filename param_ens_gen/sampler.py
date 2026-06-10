@@ -59,7 +59,7 @@ class Sampler(ABC):
         - __init__(self, row, pft_sheet, posterior_config): parse all
           sampling configuration from the spreadsheet row at construction time.
         - sample(self, normalized_value, context): draw a value given a normalised input.
-        - normalize(self, value, context): convert a concrete value back to normalised [0, 1].
+        - normalize(self, value, context, clip_to_bounds): convert a concrete value back to normalised [0, 1].
     """
 
     _registry: dict[str, type[Sampler]] = {}
@@ -121,6 +121,7 @@ class Sampler(ABC):
         self,
         value: float | np.ndarray,
         context: SampleContext,
+        clip_to_bounds: bool = False,
     ) -> float | np.ndarray:
         """Convert a concrete parameter value into a normalized [0, 1] value.
 
@@ -128,6 +129,8 @@ class Sampler(ABC):
             value (float | np.ndarray): concrete parameter to normalize
             context: Sampling context. Each subclass uses the fields relevant to its
                 strategy and ignores the rest.
+            clip_to_bounds (bool, optional): optionally clip to [0-1] if outside range,
+                otherwise method will raise a ValueError. Defaults to None
 
         Returns:
             float | np.ndarray: normalized value(s) in [0 to 1]
@@ -202,10 +205,16 @@ class UniformSampler(Sampler, sampler_type="uniform"):
         self,
         value: float | np.ndarray,
         context: SampleContext,
+        clip_to_bounds: bool = False,
     ) -> float | np.ndarray:
         """Convert a concrete parameter value into a normalized [0, 1] value."""
-        min_val, max_val = self.resolve_bounds(context.default_value)
 
+        min_val, max_val = self.resolve_bounds(
+            context.default_value, pft_axis=context.pft_axis
+        )
+
+        if clip_to_bounds:
+            value = np.clip(value, min_val, max_val)
         if np.any(value > max_val):
             raise ValueError(
                 f"value: {value} exceeds maximum value(s). "
@@ -271,11 +280,16 @@ class PosteriorSampler(Sampler, sampler_type="posterior"):
         self,
         value: float | np.ndarray,
         context: SampleContext,
+        clip_to_bounds: bool = False,
     ) -> float | np.ndarray:
         """Convert a concrete parameter value into a normalized [0, 1] value."""
         if context.array_index is not None:
-            return self._unscale_for_index(value, context.array_index)
-        return self._unscale_broadcast(value, context.n_indices)
+            return self._unscale_for_index(
+                value, context.array_index, clip_to_bounds=clip_to_bounds
+            )
+        return self._unscale_broadcast(
+            value, context.n_indices, clip_to_bounds=clip_to_bounds
+        )
 
     def _draw_for_index(
         self, normalized_value: float, array_index: int
@@ -293,19 +307,23 @@ class PosteriorSampler(Sampler, sampler_type="posterior"):
         row = source.draw_row(normalized_value)
         return [np.array([row[v]]) for v in self.parameters]
 
-    def _unscale_for_index(self, value: float, array_index: int) -> float:
+    def _unscale_for_index(
+        self, value: float, array_index: int, clip_to_bounds: bool = False
+    ) -> float:
         """convert a concrete parameter value into a normalized [0-1] value for a
         specific array index
 
         Args:
             value (float): concrete parameter value
             array_index (int): array index to use
+            clip_to_bounds (bool, optional): optionally clip to [0-1] if outside bounds
+            Defaults to False.
 
         Returns:
             float: normalized value
         """
         source = self._source_for_index(array_index)
-        return source.unscale(value)
+        return source.unscale(value, clip_to_bounds=clip_to_bounds)
 
     def _source_for_index(self, array_index: int) -> PosteriorSource:
         """Return the correct PosteriorSource given an input index
@@ -328,7 +346,10 @@ class PosteriorSampler(Sampler, sampler_type="posterior"):
         )
 
     def _unscale_broadcast(
-        self, value: float | list[np.ndarray], n_indices: list[int] | None
+        self,
+        value: float | list[np.ndarray],
+        n_indices: list[int] | None,
+        clip_to_bounds: bool = False,
     ) -> list[np.ndarray]:
         result = [np.zeros(n_indices) for _ in self.parameters]
         if len(self.sources) == 1 and self.sources[0].is_broadcast:
@@ -337,7 +358,9 @@ class PosteriorSampler(Sampler, sampler_type="posterior"):
                 sort_value = float(value[sort_idx].flat[0])
             else:
                 sort_value = value
-            unscaled = self.sources[0].unscale(sort_value)
+            unscaled = self.sources[0].unscale(
+                sort_value, clip_to_bounds=clip_to_bounds
+            )
             for k, _ in enumerate(self.parameters):
                 result[k][:] = unscaled
         else:
@@ -351,7 +374,7 @@ class PosteriorSampler(Sampler, sampler_type="posterior"):
                         sort_value = float(value[sort_idx][array_idx])
                     else:
                         sort_value = float(value)
-                    row = source.unscale(sort_value)
+                    row = source.unscale(sort_value, clip_to_bounds=clip_to_bounds)
                     for k, _ in enumerate(self.parameters):
                         result[k][array_idx] = row
         return result

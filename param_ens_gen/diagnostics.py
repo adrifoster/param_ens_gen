@@ -25,42 +25,60 @@ except ImportError:  # pragma: no cover
     HAS_MATPLOTLIB = False
 
 _CATEGORY_COLORS = {
+    "acclimation": "#5BA8A0",
     "allometry": "#1D9E75",
     "allocation": "#7F77DD",
-    "photosynthesis": "#D85A30",
-    "vegetation water": "#378ADD",
-    "phenology": "#EF9F27",
-    "mortality": "#D4537E",
+    "biogeochemistry": "#7DBB9E",
+    "canopy aerodynamics": "#90D5FF",
+    "canopy evaporation": "#5DADE2",
     "decomposition": "#639922",
-    "respiration": "#BA7517",
+    "fire": "#b22222",
+    "FUN": "#341539",
+    "LUNA": "#F7C59F",
+    "mortality": "#D4537E",
+    "nitrogen": "#8B9D2B",
+    "phenology": "#EF9F27",
+    "photosynthesis": "#D85A30",
     "radiation": "#0F6E56",
     "recruitment": "#993556",
-    "turbulence": "#85B7EB",
-    "vegetation dynamics": "#F0997B",
+    "respiration": "#BA7517",
+    "snow": "#B0C4DE",
+    "soil water": "#13265C",
     "stomatal": "#C97DB0",
-    "biogeochemistry": "#7DBB9E",
+    "turbulence": "#85B7EB",
+    "vegetation water": "#378ADD",
+    "vegetation dynamics": "#F0997B",
 }
 _DEFAULT_COLOR = "#2C2C2A"
 
 
 def _expand_normalized(
-    param: Parameter, normalized: float | np.ndarray | list
+    param: Parameter,
+    normalized: float | np.ndarray | list,
+    pft_index: int | None = None,
 ) -> list[tuple[str, float, str]]:
     """Expand a normalized value into (name, value, category) tuples."""
     param_names = (
         param.spec.base_params if param.spec.base_params else [param.spec.name]
     )
     normalized_list = normalized if isinstance(normalized, list) else [normalized]
-    category = param.spec.category
+    subcategory = param.spec.subcategory
 
     rows = []
     for pname, norm_val in zip(param_names, normalized_list):
         arr = np.asarray(norm_val)
         if arr.ndim == 0:
-            rows.append((pname, float(arr), category))
+            rows.append((pname, float(arr), subcategory))
         else:
             for i, v in enumerate(arr.flat):
-                rows.append((f"{pname}_{i}", float(v), category))
+                if pft_index is None or i == pft_index:
+                    rows.append(
+                        (
+                            f"{pname}_{i}" if pft_index is None else pname,
+                            float(v),
+                            subcategory,
+                        )
+                    )
     return rows
 
 
@@ -69,6 +87,7 @@ def normalize_defaults(
     default_param_file: Path,
     posterior_sources: Path | None = None,
     param_list: list[str] | None = None,
+    pft_index: int | None = None,
 ) -> pd.DataFrame:
     """Return normalized default values for all parameters in param_dir.
 
@@ -88,6 +107,8 @@ def normalize_defaults(
         param_list (list[str] | None, optional): Subset of parameters to
             normalize. If None, all parameters in main.csv are used.
             Defaults to None.
+        pft_index (int | None, optional): If set, only returns this PFT axis. Defaults to
+        None.
 
     Returns:
         pd.DataFrame: One row per parameter with columns:
@@ -138,8 +159,14 @@ def normalize_defaults(
     rows = []
     for param in params:
         default_value = param.get_default(default_ds)
-        normalized = param.normalize(default_value, default_ds)
-        rows.extend(_expand_normalized(param, normalized))
+        normalized = param.normalize(default_value, default_ds, clip_to_bounds=True)
+        rows.extend(
+            (name, val, cat)
+            for name, val, cat in _expand_normalized(
+                param, normalized, pft_index=pft_index
+            )
+            if not (isinstance(val, float) and np.isnan(val))
+        )
     return pd.DataFrame(rows, columns=["parameter", "normalized_value", "category"])
 
 
@@ -211,6 +238,7 @@ def plot_param_bounds(df: pd.DataFrame):
             "Install it with: conda install matplotlib"
         )  # pragma: no cover
 
+    df = df.sort_values(by="category")
     n_params = len(df)
     fig_height = max(6, n_params * 0.32 + 2)
     fig, ax = plt.subplots(figsize=(9, fig_height))
@@ -262,9 +290,10 @@ def plot_param_bounds(df: pd.DataFrame):
         loc="center",
     )
     ax.set_title(
-        "Prior parameter ranges by functional group",
+        "Parameter ranges by functional group",
         fontsize=11,
         fontweight="500",
         pad=12,
     )
+    
     return fig

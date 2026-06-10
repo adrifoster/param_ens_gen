@@ -140,15 +140,16 @@ class PosteriorSource:
         idx = min(int(normalized_value * n), n - 1)
         return self._draws.iloc[idx]
 
-    def unscale(self, value: float) -> float:
+    def unscale(self, value: float, clip_to_bounds: bool = False) -> float:
         """Find the quantile corresponding to a drawn value.
 
         Args:
             value (float): actual parameter input
+            clip_to_bounds (bool, optional): optionally clip to [0-1]. Defaults to False
 
         Raises:
             RuntimeError: Dataframe is empty
-            ValueError: input ``value`` is outside range of distribution
+            ValueError: input value is outside range of distribution
 
         Returns:
             pd.Series: One row of posterior draws, indexed by variable name.
@@ -166,6 +167,8 @@ class PosteriorSource:
         sort_col = self.parameters[self.sort_param_index]
         max_val = self._draws[sort_col].iloc[-1]
         min_val = self._draws[sort_col].iloc[0]
+        if clip_to_bounds:
+            value = np.clip(value, min_val, max_val)
         if value > max_val:
             raise ValueError(
                 f"value: {value} > maximum value on dataset. "

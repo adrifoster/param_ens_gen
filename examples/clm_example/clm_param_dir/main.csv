@@ -67,4 +67,4 @@ watsat_sf,hydrology,soil water,[],uniform,default,,,,,,.2f,20percent,20percent,u
 wc2wjb0,stomatal,LUNA,['pft'],uniform,default,,,,,,.4f,0.6527,1.5,unitless,the baseline ratio of rubisco limited rate vs light limited photosynthetic rate (Wc:Wj)
 xdrdt,hydrology,snow,[],uniform,default,,,,,,.2f,0.5,5,unitless,arbitrary factor applied to snow aging rate
 xl,biophysics,radiation,['pft'],uniform,default,,,,,,.2f,pft,pft,unitless,Leaf/stem orientation index
-z0v_Cr,,,['pft'],uniform,default,,,,,,.2f,10percent,10percent,unitless,
+z0v_Cr,biophysics,canopy aerodynamics,['pft'],uniform,default,,,,,,.2f,10percent,10percent,unitless,Roughness-element drag coefficient for Raupach92 parameterization
