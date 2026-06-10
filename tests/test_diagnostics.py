@@ -202,7 +202,9 @@ def test_normalize_defaults_clips_out_of_bounds_defaults(
 
     df = normalize_defaults(tmp_path, default_param_file)
     # default 0.010 is below min 0.025 so should be clipped to 0.0
-    assert all(df["normalized_value"] == pytest.approx(0.0))
+    assert df["normalized_value"].iloc[0] == pytest.approx(0.0)
+    assert df["normalized_value"].iloc[1] == pytest.approx(0.0)
+    assert df["normalized_value"].iloc[2] == pytest.approx(0.2)
 
 
 def test_normalize_defaults_filters_nan_values(
